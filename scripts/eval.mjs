@@ -52,6 +52,9 @@ const CONFIG = {
   provider: args.provider || process.env.LUIGI_EVAL_PROVIDER || 'custom', // custom | lmstudio | ollama
   model: args.model || process.env.LUIGI_EVAL_MODEL || 'mlx-community/Qwen2.5-Coder-7B-Instruct-4bit',
   temperature: explicitTemp ? Number(args.temperature) : 0.2,
+  // Reasoning-distilled models spend thousands of tokens thinking before answering;
+  // without headroom the reply is all <think> and empty content. Generous by default.
+  maxTokens: args['max-tokens'] !== undefined ? Number(args['max-tokens']) : 4096,
   timeoutMs: args.timeout !== undefined ? Number(args.timeout) : 60000,
   suite: args.suite || 'all',            // coding | reasoning | all
   difficulty: args.difficulty || 'all',  // all | base | hard
@@ -79,8 +82,8 @@ async function callModel(messages, temperature = CONFIG.temperature) {
     ? `${CONFIG.endpoint.replace(/\/$/, '')}/api/chat`
     : `${CONFIG.endpoint.replace(/\/$/, '')}/v1/chat/completions`;
   const body = isOllama
-    ? { model: CONFIG.model, messages, stream: false, options: { temperature } }
-    : { model: CONFIG.model, messages, stream: false, temperature };
+    ? { model: CONFIG.model, messages, stream: false, options: { temperature, num_predict: CONFIG.maxTokens } }
+    : { model: CONFIG.model, messages, stream: false, temperature, max_tokens: CONFIG.maxTokens };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
@@ -175,11 +178,12 @@ function runJs(code, tests) {
 }
 
 function canonicalizeMath(s) {
-  // Fold common LaTeX / markdown answer formatting so 3/10 == \frac{3}{10} == \(3/10\).
+  // Fold common LaTeX / markdown answer formatting so 3/10 == \frac{3}{10} == **3/10**.
   return String(s)
     .replace(/\\frac\s*\{\s*(-?\d+)\s*\}\s*\{\s*(-?\d+)\s*\}/g, '$1/$2')
     .replace(/\\[a-z()[\]]+/gi, '')   // stray LaTeX commands / delimiters
-    .replace(/[\\${}()[\]]/g, '');
+    .replace(/[\\${}()[\]]/g, '')
+    .replace(/[*_`#]/g, '');          // markdown emphasis (reasoning models bold answers)
 }
 
 function normalizeAnswer(s) {
@@ -187,10 +191,17 @@ function normalizeAnswer(s) {
 }
 
 function extractFinalAnswer(text) {
-  const m = [...text.matchAll(/final answer\s*[:\-]?\s*([^\n]+)/gi)];
-  if (m.length) return m[m.length - 1][1].trim();
+  // Drop markdown emphasis first, so "**Final answer:**" and "**60**" read cleanly.
+  const clean = text.replace(/[*`#]/g, '');
+  // Take the last "Final answer:" whose captured value is non-empty. A bolded header
+  // like "**Final answer:**\n60" leaves the value on the next line, so fall through.
+  const matches = [...clean.matchAll(/final answer\s*[:\-]?\s*([^\n]*)/gi)];
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const v = matches[i][1].trim();
+    if (v) return v;
+  }
   // fallback: last non-empty line
-  const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = clean.trim().split('\n').map((l) => l.trim()).filter(Boolean);
   return lines.length ? lines[lines.length - 1] : '';
 }
 
@@ -399,6 +410,11 @@ function runSelftest() {
   check('number rejects wrong', !answerMatches('8', { type: 'number', answer: '7' }));
   check('text fraction latex folds', answerMatches('\\(\\frac{1}{6}\\)', { type: 'text', answer: '1/6' }));
   check('text word', answerMatches('Wednesday', { type: 'text', answer: 'wednesday' }));
+
+  // Regression: markdown-formatted answers (reasoning models bold them).
+  check('bold inline answer', extractFinalAnswer('Final answer: **60**') === '60');
+  check('answer on line after bold header', extractFinalAnswer('**Final answer:**\nWednesday') === 'Wednesday');
+  check('number matches bolded', answerMatches('**42**', { type: 'number', answer: '42' }));
 
   // Vote keys collapse equivalent answers so self-consistency tallies correctly.
   check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');
