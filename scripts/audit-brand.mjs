@@ -52,6 +52,7 @@ function walk(dir, extensions) {
 const targets = [
   ...walk(path.join(root, 'src'), ['.ts']),
   ...walk(path.join(root, 'media'), ['.svg', '.css', '.html']),
+  ...walk(path.join(root, 'site'), ['.svg', '.css', '.html']),
   path.join(root, 'package.json'),
 ];
 

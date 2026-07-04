@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luigi Codes — Premium local AI coding agent</title>
+<meta name="description" content="A full coding agent for VS Code — chat, autonomous agent, codebase intelligence, memory, and self-improvement — on models that run entirely on your machine. No API keys, no per-token bills, no code leaving your computer.">
+<meta property="og:title" content="Luigi Codes — Premium local AI coding agent">
+<meta property="og:description" content="Private, powerful, yours. A VS Code coding agent that runs entirely on your machine.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  /* Luigi Solutions palette — theme.css anchors + designTokens.ts derived steps. */
+  :root {
+    --canvas: #0b0a09;
+    --surface: #16140f;
+    --surface-2: #1d1a14;
+    --surface-3: #242019;
+    --ink: #f3efe7;
+    --ink-muted: #9c948a;
+    --ink-faint: #6e675e;
+    --gold: #c9a86a;
+    --gold-light: #dcc18d;
+    --gold-dark: #a8874d;
+    --hairline: rgba(201, 168, 106, 0.32);
+    --glow: 0 0 0 1px rgba(201, 168, 106, 0.32), 0 0 18px rgba(201, 168, 106, 0.15);
+    --glow-strong: 0 0 0 1px rgba(201, 168, 106, 0.55), 0 0 28px rgba(201, 168, 106, 0.28);
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --serif: Newsreader, ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+  @keyframes reveal { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { animation: reveal 650ms var(--ease) both; }
+  .d1 { animation-delay: 80ms; } .d2 { animation-delay: 160ms; }
+  .d3 { animation-delay: 240ms; } .d4 { animation-delay: 320ms; }
+  @media (prefers-reduced-motion: reduce) { .reveal { animation: none; } }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--hairline);
+    padding: 20px 0;
+  }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .wordmark {
+    font-family: var(--serif);
+    letter-spacing: 0.3em;
+    font-size: 15px;
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wordmark .shroom { letter-spacing: 0; margin-right: 10px; }
+  nav { display: flex; gap: 20px; align-items: center; }
+  nav a {
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 150ms var(--ease);
+  }
+  nav a:hover { color: var(--gold); }
+
+  /* ── Hero ── */
+  .hero { padding: 96px 0 72px; text-align: center; }
+  .hero .mark { font-size: 56px; line-height: 1; margin-bottom: 24px; }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.15;
+    margin: 16px auto 20px;
+    max-width: 720px;
+  }
+  .hero h1 em { font-style: italic; color: var(--gold); }
+  .hero p.sub {
+    color: var(--ink-muted);
+    font-size: 18px;
+    max-width: 620px;
+    margin: 0 auto 36px;
+  }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 2px;
+    transition: all 150ms var(--ease);
+  }
+  .btn-gold { background: var(--gold); color: var(--canvas); }
+  .btn-gold:hover { background: var(--gold-light); box-shadow: var(--glow-strong); }
+  .btn-ghost { border: 1px solid var(--gold); color: var(--gold); }
+  .btn-ghost:hover { box-shadow: var(--glow); color: var(--gold-light); border-color: var(--gold-light); }
+
+  .truths {
+    display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
+    margin-top: 56px; padding-top: 32px;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-muted); font-size: 14px;
+  }
+  .truths span b { color: var(--gold); font-weight: 500; }
+
+  /* ── Sections ── */
+  section { padding: 72px 0; border-top: 1px solid var(--hairline); }
+  .section-head { max-width: 640px; margin-bottom: 48px; }
+  .section-head h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 32px;
+    margin: 12px 0 12px;
+  }
+  .section-head p { color: var(--ink-muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .card .glyph { color: var(--gold); font-size: 18px; margin-bottom: 12px; }
+  .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--ink); }
+  .card p { font-size: 14px; color: var(--ink-muted); }
+  .card p code {
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--hairline);
+    border-radius: 2px; padding: 1px 5px;
+  }
+
+  /* ── Privacy strip ── */
+  .privacy { text-align: center; }
+  .privacy blockquote {
+    font-family: var(--serif);
+    font-size: clamp(22px, 3.6vw, 30px);
+    font-weight: 400;
+    max-width: 760px;
+    margin: 0 auto;
+    line-height: 1.4;
+  }
+  .privacy blockquote em { color: var(--gold); font-style: italic; }
+  .privacy .who { margin-top: 20px; }
+
+  /* ── Install ── */
+  .steps { display: grid; gap: 16px; max-width: 760px; }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .step .n {
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .step p { color: var(--ink-muted); font-size: 14px; margin-bottom: 12px; }
+  .step p a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
+  .step p a:hover { color: var(--gold-light); text-decoration-color: var(--gold); }
+  pre {
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+  }
+  pre code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  pre code .c { color: var(--ink-faint); }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--hairline);
+    padding: 40px 0 64px;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center; }
+  footer a { color: var(--ink-muted); text-decoration: none; }
+  footer a:hover { color: var(--gold); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 64px 0 48px; }
+    section { padding: 56px 0; }
+    nav a.hide-sm { display: none; }
+    .truths { gap: 16px; flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="wordmark" href="#"><span class="shroom">🍄</span>LUIGI CODES</a>
+    <nav>
+      <a href="#capabilities" class="hide-sm">Features</a>
+      <a href="#install" class="hide-sm">Install</a>
+      <a href="https://github.com/LuigiSolutions/luigi-codes">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <div class="mark reveal">🍄</div>
+    <div class="eyebrow reveal d1">Luigi Solutions — Private Local AI</div>
+    <h1 class="reveal d2">Your coding agent.<br>Your machine. <em>Your model.</em></h1>
+    <p class="sub reveal d3">A full coding agent for VS Code — chat, autonomous agent, codebase intelligence,
+    long-term memory, and a self-improvement loop — on models that run entirely on your computer.
+    No API keys. No per-token bills. No code leaving your machine.</p>
+    <div class="cta-row reveal d4">
+      <a class="btn btn-gold" href="#install">Install</a>
+      <a class="btn btn-ghost" href="https://github.com/LuigiSolutions/luigi-codes">View Source</a>
+    </div>
+    <div class="truths reveal d4">
+      <span><b>$0</b> per token, forever</span>
+      <span><b>0</b> runtime dependencies</span>
+      <span><b>100%</b> on-machine</span>
+      <span><b>23/23</b> integration tests</span>
+    </div>
+  </div>
+
+  <section id="capabilities">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">What's inside</div>
+        <h2>Everything an assistant should be — with nothing phoning home.</h2>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Chat, docked like it belongs</h3>
+          <p>Streaming conversation in the activity bar — markdown, code blocks with copy, stop mid-stream. The full editorial look, warm near-black and gold.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">▸</div>
+          <h3>Agent mode with a human gate</h3>
+          <p>A 5-phase loop — context, plan, <em>your approval</em>, execute with self-correction, honest verify — over 11 workspace-guarded tools.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Model router</h3>
+          <p>Detects your Ollama / LM Studio / any OpenAI-compatible local server, scores every installed model per task, and learns from observed performance.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Codebase intelligence</h3>
+          <p>Symbols, imports, and conventions indexed across your workspace; semantic retrieval through local embeddings with a lexical fallback.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Memory that compounds</h3>
+          <p>Every agent run remembered — ChromaDB when you run it, local JSON always — so similar past work informs new plans.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">▸</div>
+          <h3>It becomes <em>your</em> model</h3>
+          <p>Accepted work and your corrections accumulate into a fine-tune dataset. One command exports JSONL; one script LoRA-tunes a local model on your data.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Web app, desktop &amp; mobile</h3>
+          <p>One command serves the chat as a token-locked responsive web page — use it in any browser, or from your phone on your own Wi-Fi.</p>
+        </div>
+        <div class="card">
+          <div class="glyph">◆</div>
+          <h3>Terminal chat</h3>
+          <p>A gold-on-black REPL for quick questions without leaving the terminal. Because sometimes the answer belongs next to the command.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="privacy">
+    <div class="wrap">
+      <div class="eyebrow">The contract</div>
+      <blockquote>Prompts, code, memory, and training data never leave localhost.
+      No vendor can change the price, the model, or the terms underneath you.
+      <em>Built to be owned.</em></blockquote>
+      <div class="who eyebrow">— the whole point</div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Install</div>
+        <h2>Running in five minutes.</h2>
+        <p>Luigi needs VS Code 1.85+ and a local inference server — <a href="https://ollama.com" style="color: var(--gold);">Ollama</a> is the easiest start.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="n">01 — Get a local model</span>
+<pre><code>ollama pull qwen2.5-coder:7b       <span class="c"># strong small coder</span>
+ollama pull nomic-embed-text       <span class="c"># embeddings for index + memory</span></code></pre>
+        </div>
+        <div class="step">
+          <span class="n">02 — Install the extension</span>
+          <p>VS Code Marketplace listing is on its way. Today, build from source — about a minute:</p>
+<pre><code>git clone https://github.com/LuigiSolutions/luigi-codes
+cd luigi-codes &amp;&amp; npm install &amp;&amp; npm run compile
+npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</code></pre>
+        </div>
+        <div class="step">
+          <span class="n">03 — Meet Luigi</span>
+          <p>Click the 🍄 in the activity bar. For your phone: run <em>“Luigi: Open Web App (Desktop &amp; Mobile)”</em> from the command palette.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Luigi Solutions · Built to be owned.</span>
+    <span>
+      <a href="https://github.com/LuigiSolutions/luigi-codes">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/LuigiSolutions/luigi-codes#readme">Docs</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
