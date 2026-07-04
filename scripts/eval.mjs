@@ -21,10 +21,12 @@
 // hard timeout). That is standard for code benchmarks; use --dry-run to skip execution.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { tmpdir } from 'node:os';
+import {
+  stripStopMarkers, stripThinkBlocks, extractCode, runJs,
+  extractFinalAnswer, answerKey, answerMatches,
+} from './lib/verify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -109,29 +111,6 @@ async function callModel(messages, temperature = CONFIG.temperature) {
   }
 }
 
-// Reasoning-distilled models (DeepSeek-R1 distills, QwQ) emit a long <think>...</think>
-// chain before the answer. Score only the post-reasoning text, or the chain's own
-// numbers corrupt answer extraction the same way stop markers did. If the closing tag
-// is missing (model ran out of tokens mid-thought) leave the text as-is.
-function stripThinkBlocks(text) {
-  const close = text.lastIndexOf('</think>');
-  return close === -1 ? text : text.slice(close + '</think>'.length).trim();
-}
-
-// Some raw servers (mlx-lm observed on :8080) leak chat-template stop markers as
-// literal text at the end of a reply. The product strips these (streamText.ts,
-// splitAtStopMarker, test T23); the harness talks to the server directly, so it
-// must strip them too or a correct answer like "wednesday<|im_end|>" scores as wrong.
-const STOP_MARKERS = ['<|im_end|>', '<|endoftext|>', '<|eot_id|>', '<|eom_id|>', '<|end|>', '</s>'];
-function stripStopMarkers(text) {
-  let out = text;
-  for (const marker of STOP_MARKERS) {
-    const i = out.indexOf(marker);
-    if (i !== -1) out = out.slice(0, i);
-  }
-  return out.trim();
-}
-
 async function assertServerReachable() {
   try {
     await callModel([{ role: 'user', content: 'Reply with the single word: ok' }]);
@@ -151,90 +130,6 @@ async function assertServerReachable() {
     console.error('Or point at another server: npm run eval -- --endpoint http://localhost:11434 --provider ollama --model qwen2.5-coder:7b\n');
     process.exit(2);
   }
-}
-
-// --- helpers -----------------------------------------------------------------
-
-function extractCode(text) {
-  // Prefer the longest fenced block; fall back to the raw text.
-  const blocks = [...text.matchAll(/```(?:[a-zA-Z0-9]*)\n([\s\S]*?)```/g)].map((m) => m[1]);
-  if (blocks.length) return blocks.sort((a, b) => b.length - a.length)[0].trim();
-  return text.trim();
-}
-
-function runJs(code, tests) {
-  const file = join(tmpdir(), `luigi-eval-${process.pid}-${Math.floor(performance.now())}.mjs`);
-  writeFileSync(file, `${code}\n\n${tests}\n`);
-  const res = spawnSync(process.execPath, [file], {
-    timeout: 10000,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  const ok = res.status === 0 && !res.error;
-  const detail = res.error
-    ? (res.error.code === 'ETIMEDOUT' ? 'execution timed out' : res.error.message)
-    : (res.status === 0 ? '' : (res.stderr || '').trim().split('\n').slice(-1)[0]);
-  return { ok, detail };
-}
-
-function canonicalizeMath(s) {
-  // Fold common LaTeX / markdown answer formatting so 3/10 == \frac{3}{10} == **3/10**.
-  return String(s)
-    .replace(/\\frac\s*\{\s*(-?\d+)\s*\}\s*\{\s*(-?\d+)\s*\}/g, '$1/$2')
-    .replace(/\\[a-z()[\]]+/gi, '')   // stray LaTeX commands / delimiters
-    .replace(/[\\${}()[\]]/g, '')
-    .replace(/[*_`#]/g, '');          // markdown emphasis (reasoning models bold answers)
-}
-
-function normalizeAnswer(s) {
-  return canonicalizeMath(s).toLowerCase().replace(/[\s,]/g, '').replace(/[.]$/, '').trim();
-}
-
-function extractFinalAnswer(text) {
-  // Drop markdown emphasis first, so "**Final answer:**" and "**60**" read cleanly.
-  const clean = text.replace(/[*`#]/g, '');
-  // Take the last "Final answer:" whose captured value is non-empty. A bolded header
-  // like "**Final answer:**\n60" leaves the value on the next line, so fall through.
-  const matches = [...clean.matchAll(/final answer\s*[:\-]?\s*([^\n]*)/gi)];
-  for (let i = matches.length - 1; i >= 0; i--) {
-    const v = matches[i][1].trim();
-    if (v) return v;
-  }
-  // fallback: last non-empty line
-  const lines = clean.trim().split('\n').map((l) => l.trim()).filter(Boolean);
-  return lines.length ? lines[lines.length - 1] : '';
-}
-
-// Vote key for self-consistency: numeric tasks collapse to their number, text to normalized.
-function answerKey(raw, task) {
-  if (task.type === 'number') {
-    const nums = String(raw).match(/-?\d+(?:\.\d+)?/g);
-    if (nums && nums.length) return String(Number(nums[nums.length - 1]));
-  }
-  return normalizeAnswer(raw);
-}
-
-function answerMatches(candidate, task) {
-  if (task.type === 'number') {
-    const expected = Number(task.answer);
-    const nums = String(candidate).match(/-?\d+(?:\.\d+)?/g);
-    if (nums && nums.length) {
-      const got = Number(nums[nums.length - 1]);
-      return Math.abs(got - expected) < 1e-6;
-    }
-    return false;
-  }
-  // text
-  const na = normalizeAnswer(candidate);
-  const nb = normalizeAnswer(task.answer);
-  if (na === nb) return true;
-  // Whole-word match in the raw answer, so "...is a Wednesday" counts for "wednesday"
-  // but "the answer is knight" does not match "knave" via a stray substring.
-  const esc = String(task.answer).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, 'i').test(String(candidate))) return true;
-  // Fractions may sit inside a longer stated answer, e.g. "= 6/36 = 1/6".
-  if (String(task.answer).includes('/') && na.includes(nb)) return true;
-  return false;
 }
 
 const REASONING_SYSTEM = 'Think step by step, then end with a line exactly like "Final answer: X".';
@@ -430,6 +325,8 @@ function runSelftest() {
   check('text word in sentence', answerMatches('100 days from Monday is a Wednesday.', { type: 'text', answer: 'wednesday' }));
   check('text negation not matched', !answerMatches('the answer is knight', { type: 'text', answer: 'knave' }));
   check('fraction inside longer answer', answerMatches('= 6/36 = 1/6', { type: 'text', answer: '1/6' }));
+  check('fraction equivalence unreduced', answerMatches('\\(\\frac{286}{5525}\\)', { type: 'text', answer: '22/425' }));
+  check('fraction inequivalence rejected', !answerMatches('1/3', { type: 'text', answer: '1/6' }));
 
   // Vote keys collapse equivalent answers so self-consistency tallies correctly.
   check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');
