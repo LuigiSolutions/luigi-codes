@@ -67,8 +67,11 @@ export function normalizeAnswer(s) {
 }
 
 export function extractFinalAnswer(text) {
-  // Drop markdown emphasis first, so "**Final answer:**" and "**60**" read cleanly.
-  const clean = text.replace(/[*`#]/g, '');
+  // Drop markdown emphasis and LaTeX delimiters, so "**Final answer:**", "**60**",
+  // and "Final answer: \[\frac{22}{425}\]" all read cleanly. This also protects the
+  // filter: reasoning models answer in display math, and a correct trace must not be
+  // rejected as wrong just because its answer was wrapped in \[ ... \].
+  const clean = text.replace(/[*`#]/g, '').replace(/\\[()[\]]/g, '');
   // Take the last "Final answer:" whose captured value is non-empty. A bolded header
   // like "**Final answer:**\n60" leaves the value on the next line, so fall through.
   const matches = [...clean.matchAll(/final answer\s*[:\-]?\s*([^\n]*)/gi)];

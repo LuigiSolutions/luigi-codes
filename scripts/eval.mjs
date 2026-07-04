@@ -327,6 +327,7 @@ function runSelftest() {
   check('fraction inside longer answer', answerMatches('= 6/36 = 1/6', { type: 'text', answer: '1/6' }));
   check('fraction equivalence unreduced', answerMatches('\\(\\frac{286}{5525}\\)', { type: 'text', answer: '22/425' }));
   check('fraction inequivalence rejected', !answerMatches('1/3', { type: 'text', answer: '1/6' }));
+  check('latex display-math answer', answerMatches(extractFinalAnswer('Final answer: \\[\\frac{22}{425}\\]'), { type: 'text', answer: '22/425' }));
 
   // Vote keys collapse equivalent answers so self-consistency tallies correctly.
   check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');
