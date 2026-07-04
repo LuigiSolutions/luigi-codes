@@ -198,6 +198,31 @@
   pre code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
   pre code .c { color: var(--ink-faint); }
 
+  /* ── Install gate ── */
+  #gate .fields { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin: 16px 0 14px; }
+  @media (max-width: 560px) { #gate .fields { grid-template-columns: 1fr; } }
+  #gate input {
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 13px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+  }
+  #gate input::placeholder { color: var(--ink-faint); }
+  #gate input:focus { border-color: var(--gold); box-shadow: var(--glow); }
+  #gate button { border: none; cursor: pointer; font-family: var(--sans); width: 100%; }
+  #gate button:disabled { opacity: 0.6; cursor: wait; box-shadow: none; }
+  #gate .fine { color: var(--ink-faint); font-size: 12px; margin-top: 12px; text-align: center; }
+  #gate .gate-error { color: var(--ink-muted); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+  #gate .gate-error a { color: var(--gold); }
+  /* Bots see this field; humans never do. */
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
   /* ── Footer ── */
   footer {
     border-top: 1px solid var(--hairline);
@@ -318,7 +343,25 @@
         <h2>Running in five minutes.</h2>
         <p>Luigi needs VS Code 1.85+ and a local inference server — <a href="https://ollama.com" style="color: var(--gold);">Ollama</a> is the easiest start.</p>
       </div>
-      <div class="steps">
+      <div class="step" id="gate">
+        <span class="n">First — where should we send your welcome?</span>
+        <p>Luigi Codes is evolving fast. Leave your first name and email — you'll get a
+        welcome note now, and occasional updates about new features and important
+        releases. Nothing else, ever.</p>
+        <form id="leadForm" novalidate>
+          <div class="fields">
+            <input name="firstName" id="leadName" placeholder="First name" autocomplete="given-name" required maxlength="80">
+            <input name="email" id="leadEmail" type="email" placeholder="you@example.com" autocomplete="email" required maxlength="120">
+          </div>
+          <input class="hp" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn btn-gold" id="leadSubmit" type="submit">Install Luigi Codes</button>
+          <p class="gate-error" id="gateError">That didn't go through — check the email and try again,
+            or <a href="#steps" id="gateSkip">continue to the instructions</a>.</p>
+          <p class="fine">We only email about Luigi Codes — unsubscribe anytime.</p>
+        </form>
+      </div>
+
+      <div class="steps" id="steps" hidden>
         <div class="step">
           <span class="n">01 — Get a local model</span>
 <pre><code>ollama pull qwen2.5-coder:7b       <span class="c"># strong small coder</span>
@@ -351,5 +394,63 @@ npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</cod
   </div>
 </footer>
 
+<script>
+  (function () {
+    var KEY = 'luigi-welcomed';
+    var gate = document.getElementById('gate');
+    var steps = document.getElementById('steps');
+    var form = document.getElementById('leadForm');
+    var nameEl = document.getElementById('leadName');
+    var emailEl = document.getElementById('leadEmail');
+    var submit = document.getElementById('leadSubmit');
+    var errorEl = document.getElementById('gateError');
+
+    function open() {
+      gate.hidden = true;
+      steps.hidden = false;
+    }
+
+    // Returning visitors go straight to the instructions.
+    try {
+      if (localStorage.getItem(KEY)) { open(); }
+    } catch (e) { /* storage blocked — the gate simply shows */ }
+
+    document.getElementById('gateSkip').addEventListener('click', function (e) {
+      e.preventDefault();
+      open();
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var firstName = nameEl.value.trim();
+      var email = emailEl.value.trim();
+      if (!firstName || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        errorEl.style.display = 'block';
+        return;
+      }
+      errorEl.style.display = 'none';
+      submit.disabled = true;
+      submit.textContent = 'One moment…';
+      fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName,
+          email: email,
+          company: form.elements.company.value
+        })
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        try { localStorage.setItem(KEY, '1'); } catch (e) { /* fine */ }
+        open();
+        document.getElementById('steps').scrollIntoView({ behavior: 'smooth' });
+      }).catch(function () {
+        submit.disabled = false;
+        submit.textContent = 'Install Luigi Codes';
+        errorEl.style.display = 'block';
+      });
+    });
+  })();
+</script>
 </body>
 </html>

@@ -53,6 +53,34 @@ build). Redeploy after editing `site/`: `npx vercel deploy --prod --yes`.
 and add it in the Vercel dashboard → project → Domains; or connect the GitHub
 repo in the dashboard so every push auto-deploys.
 
+## Step 6 — Welcome-email sender (one human step left: Resend + DNS)
+
+The install gate on the site already **captures leads** (name + email →
+private Vercel Blob store `luigi-codes-leads`; view them with
+`node scripts/leads.mjs`). The **welcome email** switches on automatically the
+moment a Resend API key exists. To finish (~5 min + DNS propagation):
+
+1. Sign up free at https://resend.com (100 emails/day, 3,000/month).
+2. **Domains → Add Domain** → `luigisolutions.com` → add the DKIM/SPF records
+   it shows at your DNS host → wait for "Verified". (This is what lets mail
+   legitimately come *from* kalob@luigisolutions.com — no mailbox password
+   involved, ever.)
+3. **API Keys → Create** (name `luigi-codes-site`, "Sending access" only) —
+   copy the `re_…` key.
+4. In this repo:
+   ```bash
+   printf 'PASTE_KEY_HERE' | npx vercel env add RESEND_API_KEY production
+   npx vercel deploy --prod --yes
+   ```
+   (Or paste the key to the assistant and it runs these.)
+5. Test: open https://luigi-codes.vercel.app/#install in a private window and
+   sign up with your own email — the branded welcome should arrive from
+   `Luigi Codes <kalob@luigisolutions.com>` (sender configurable via the
+   `LEADS_FROM_EMAIL` env var, already set).
+
+Until step 4, signups are still stored — nobody is lost; they just don't get
+the automatic welcome yet.
+
 ## Decisions to confirm before publishing (owner's call)
 
 - **License.** `LICENSE.md` is currently "free to use, no redistribution,

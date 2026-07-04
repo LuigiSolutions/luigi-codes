@@ -1,5 +1,7 @@
-# Only the static site goes to Vercel.
+# Only the static site + its API functions go to Vercel.
 *
 !site
 !site/**
+!api
+!api/**
 !vercel.json
