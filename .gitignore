@@ -14,6 +14,10 @@ docs/
 # Eval run artifacts (harness + task sets are tracked; per-run reports are not)
 eval/reports/
 
+# Distillation artifacts (prompts + scripts are tracked; generated data is not)
+training/traces/
+training/dataset/
+
 # OS noise
 .DS_Store
 .vercel
