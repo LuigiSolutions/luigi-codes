@@ -1,79 +1,133 @@
 {
   "suite": "coding",
   "language": "javascript",
-  "note": "Executed pass@1. The model must return only a JavaScript function named entryPoint. Tests are appended and run under node; exit 0 means pass. Small seed set, grow over time.",
+  "note": "Executed pass@1. The model must return only a JavaScript function named entryPoint. Tests are appended and run under node; exit 0 means pass. Tasks tagged difficulty base (seed) or hard (algorithmic, edge-case heavy).",
   "tasks": [
     {
       "id": "code-01-sum-even",
+      "difficulty": "base",
       "entryPoint": "sumEven",
       "prompt": "Write a JavaScript function `sumEven(nums)` that returns the sum of the even numbers in the array `nums`. Return only the function, no examples or explanation.",
       "tests": "if (sumEven([1,2,3,4]) !== 6) throw new Error('t1'); if (sumEven([]) !== 0) throw new Error('t2'); if (sumEven([2,2,2]) !== 6) throw new Error('t3'); if (sumEven([1,3,5]) !== 0) throw new Error('t4');"
     },
     {
       "id": "code-02-fizzbuzz",
+      "difficulty": "base",
       "entryPoint": "fizzbuzz",
       "prompt": "Write a JavaScript function `fizzbuzz(n)` that returns an array of length n where position i (1-indexed) is 'FizzBuzz' if i divisible by 15, 'Fizz' if by 3, 'Buzz' if by 5, otherwise the number i as a value. Return only the function.",
       "tests": "const r = fizzbuzz(15); if (r.length !== 15) throw new Error('len'); if (r[0] !== 1) throw new Error('1'); if (r[2] !== 'Fizz') throw new Error('3'); if (r[4] !== 'Buzz') throw new Error('5'); if (r[14] !== 'FizzBuzz') throw new Error('15');"
     },
     {
       "id": "code-03-anagram",
+      "difficulty": "base",
       "entryPoint": "isAnagram",
       "prompt": "Write a JavaScript function `isAnagram(a, b)` that returns true if strings a and b are anagrams of each other (case-insensitive, ignore spaces), else false. Return only the function.",
       "tests": "if (isAnagram('listen','silent') !== true) throw new Error('t1'); if (isAnagram('Dormitory','Dirty Room') !== true) throw new Error('t2'); if (isAnagram('abc','abd') !== false) throw new Error('t3');"
     },
     {
       "id": "code-04-binary-search",
+      "difficulty": "base",
       "entryPoint": "binarySearch",
       "prompt": "Write a JavaScript function `binarySearch(sortedArr, target)` that returns the index of target in the ascending-sorted array, or -1 if absent. Use binary search. Return only the function.",
       "tests": "if (binarySearch([1,3,5,7,9],7) !== 3) throw new Error('t1'); if (binarySearch([1,3,5,7,9],1) !== 0) throw new Error('t2'); if (binarySearch([1,3,5,7,9],2) !== -1) throw new Error('t3'); if (binarySearch([],5) !== -1) throw new Error('t4');"
     },
     {
       "id": "code-05-flatten",
+      "difficulty": "base",
       "entryPoint": "flattenDeep",
       "prompt": "Write a JavaScript function `flattenDeep(arr)` that fully flattens an arbitrarily nested array of numbers into a single-level array, preserving order. Return only the function.",
       "tests": "const r = flattenDeep([1,[2,[3,[4]],5]]); if (JSON.stringify(r) !== JSON.stringify([1,2,3,4,5])) throw new Error('t1'); if (JSON.stringify(flattenDeep([])) !== '[]') throw new Error('t2');"
     },
     {
       "id": "code-06-roman",
+      "difficulty": "base",
       "entryPoint": "toRoman",
       "prompt": "Write a JavaScript function `toRoman(n)` that converts an integer between 1 and 3999 to its Roman numeral string. Return only the function.",
       "tests": "if (toRoman(4) !== 'IV') throw new Error('t1'); if (toRoman(9) !== 'IX') throw new Error('t2'); if (toRoman(58) !== 'LVIII') throw new Error('t3'); if (toRoman(1994) !== 'MCMXCIV') throw new Error('t4');"
     },
     {
       "id": "code-07-balanced",
+      "difficulty": "base",
       "entryPoint": "isBalanced",
       "prompt": "Write a JavaScript function `isBalanced(s)` that returns true if the brackets in string s are balanced and correctly nested, considering (), [], and {}. Other characters are ignored. Return only the function.",
       "tests": "if (isBalanced('(a[b]{c})') !== true) throw new Error('t1'); if (isBalanced('([)]') !== false) throw new Error('t2'); if (isBalanced('(((') !== false) throw new Error('t3'); if (isBalanced('') !== true) throw new Error('t4');"
     },
     {
       "id": "code-08-two-sum",
+      "difficulty": "base",
       "entryPoint": "twoSum",
       "prompt": "Write a JavaScript function `twoSum(nums, target)` that returns a pair of indices [i, j] such that nums[i] + nums[j] === target, with i < j. Assume exactly one solution exists. Return only the function.",
       "tests": "const r = twoSum([2,7,11,15],9); if (!(r[0]===0 && r[1]===1)) throw new Error('t1'); const r2 = twoSum([3,2,4],6); if (!(r2[0]===1 && r2[1]===2)) throw new Error('t2');"
     },
     {
       "id": "code-09-dedupe-stable",
+      "difficulty": "base",
       "entryPoint": "dedupe",
       "prompt": "Write a JavaScript function `dedupe(arr)` that removes duplicate values while keeping the first occurrence order. Works for numbers and strings. Return only the function.",
       "tests": "if (JSON.stringify(dedupe([1,2,2,3,1])) !== JSON.stringify([1,2,3])) throw new Error('t1'); if (JSON.stringify(dedupe(['a','b','a'])) !== JSON.stringify(['a','b'])) throw new Error('t2');"
     },
     {
       "id": "code-10-gcd",
+      "difficulty": "base",
       "entryPoint": "gcd",
       "prompt": "Write a JavaScript function `gcd(a, b)` that returns the greatest common divisor of two positive integers using the Euclidean algorithm. Return only the function.",
       "tests": "if (gcd(48,18) !== 6) throw new Error('t1'); if (gcd(17,5) !== 1) throw new Error('t2'); if (gcd(100,10) !== 10) throw new Error('t3');"
     },
     {
       "id": "code-11-word-count",
+      "difficulty": "base",
       "entryPoint": "wordCount",
       "prompt": "Write a JavaScript function `wordCount(text)` that returns an object mapping each lowercased word to how many times it appears. Words are sequences of letters separated by non-letters. Return only the function.",
       "tests": "const r = wordCount('The cat the CAT'); if (r.the !== 2) throw new Error('t1'); if (r.cat !== 2) throw new Error('t2');"
     },
     {
       "id": "code-12-merge-intervals",
+      "difficulty": "base",
       "entryPoint": "mergeIntervals",
       "prompt": "Write a JavaScript function `mergeIntervals(intervals)` that merges overlapping [start, end] intervals and returns them sorted by start. Return only the function.",
       "tests": "const r = mergeIntervals([[1,3],[2,6],[8,10],[15,18]]); if (JSON.stringify(r) !== JSON.stringify([[1,6],[8,10],[15,18]])) throw new Error('t1'); const r2 = mergeIntervals([[1,4],[4,5]]); if (JSON.stringify(r2) !== JSON.stringify([[1,5]])) throw new Error('t2');"
+    },
+    {
+      "id": "code-h1-lcs",
+      "difficulty": "hard",
+      "entryPoint": "lcsLength",
+      "prompt": "Write a JavaScript function `lcsLength(a, b)` that returns the length of the longest common subsequence of strings a and b. Return only the function.",
+      "tests": "if (lcsLength('ABCBDAB','BDCAB') !== 4) throw new Error('t1'); if (lcsLength('','abc') !== 0) throw new Error('t2'); if (lcsLength('abc','abc') !== 3) throw new Error('t3'); if (lcsLength('abc','def') !== 0) throw new Error('t4');"
+    },
+    {
+      "id": "code-h2-coin-change",
+      "difficulty": "hard",
+      "entryPoint": "coinChange",
+      "prompt": "Write a JavaScript function `coinChange(coins, amount)` that returns the minimum number of coins needed to make amount, or -1 if it cannot be made. Coins may be reused. Return only the function.",
+      "tests": "if (coinChange([1,2,5],11) !== 3) throw new Error('t1'); if (coinChange([2],3) !== -1) throw new Error('t2'); if (coinChange([1],0) !== 0) throw new Error('t3'); if (coinChange([2,5],3) !== -1) throw new Error('t4');"
+    },
+    {
+      "id": "code-h3-max-subarray",
+      "difficulty": "hard",
+      "entryPoint": "maxSubArray",
+      "prompt": "Write a JavaScript function `maxSubArray(nums)` that returns the largest sum of any contiguous non-empty subarray. Handle all-negative arrays correctly. Return only the function.",
+      "tests": "if (maxSubArray([-2,1,-3,4,-1,2,1,-5,4]) !== 6) throw new Error('t1'); if (maxSubArray([-1,-2,-3]) !== -1) throw new Error('t2'); if (maxSubArray([5]) !== 5) throw new Error('t3');"
+    },
+    {
+      "id": "code-h4-edit-distance",
+      "difficulty": "hard",
+      "entryPoint": "editDistance",
+      "prompt": "Write a JavaScript function `editDistance(a, b)` that returns the Levenshtein edit distance between strings a and b. Return only the function.",
+      "tests": "if (editDistance('horse','ros') !== 3) throw new Error('t1'); if (editDistance('','abc') !== 3) throw new Error('t2'); if (editDistance('abc','abc') !== 0) throw new Error('t3'); if (editDistance('intention','execution') !== 5) throw new Error('t4');"
+    },
+    {
+      "id": "code-h5-spiral",
+      "difficulty": "hard",
+      "entryPoint": "spiralOrder",
+      "prompt": "Write a JavaScript function `spiralOrder(matrix)` that returns the elements of a 2D array in clockwise spiral order starting from the top-left. Return only the function.",
+      "tests": "if (JSON.stringify(spiralOrder([[1,2,3],[4,5,6],[7,8,9]])) !== JSON.stringify([1,2,3,6,9,8,7,4,5])) throw new Error('t1'); if (JSON.stringify(spiralOrder([[1,2],[3,4]])) !== JSON.stringify([1,2,4,3])) throw new Error('t2');"
+    },
+    {
+      "id": "code-h6-roman-to-int",
+      "difficulty": "hard",
+      "entryPoint": "romanToInt",
+      "prompt": "Write a JavaScript function `romanToInt(s)` that converts a Roman numeral string to its integer value, handling subtractive forms like IV and IX. Return only the function.",
+      "tests": "if (romanToInt('IV') !== 4) throw new Error('t1'); if (romanToInt('MCMXCIV') !== 1994) throw new Error('t2'); if (romanToInt('LVIII') !== 58) throw new Error('t3'); if (romanToInt('III') !== 3) throw new Error('t4');"
     }
   ]
 }

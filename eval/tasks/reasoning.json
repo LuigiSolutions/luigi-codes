@@ -1,77 +1,159 @@
 {
   "suite": "reasoning",
-  "note": "Multi-step reasoning. The model is asked to think and end with a line 'Final answer: X'. We extract that answer and compare. Numeric answers compare as numbers; text answers compare normalized. Small seed set, grow over time.",
+  "note": "Multi-step reasoning. The model is asked to think and end with a line 'Final answer: X'. We extract that answer and compare. Numeric answers compare as numbers; text answers compare normalized. Tasks tagged difficulty base (seed) or hard (headroom for Phase 1+).",
   "tasks": [
     {
       "id": "reason-01-trains",
+      "difficulty": "base",
       "prompt": "A train travels 60 miles in 1.5 hours. At the same average speed, how many miles does it travel in 4 hours? End with a line 'Final answer: X' where X is the number.",
       "answer": "160",
       "type": "number"
     },
     {
       "id": "reason-02-apples",
+      "difficulty": "base",
       "prompt": "A store had 120 apples. It sold 3/4 of them in the morning and 1/3 of the remainder in the afternoon. How many apples are left? End with a line 'Final answer: X'.",
       "answer": "20",
       "type": "number"
     },
     {
       "id": "reason-03-ages",
+      "difficulty": "base",
       "prompt": "Sam is twice as old as Kate. In 5 years, the sum of their ages will be 40. How old is Kate now? End with a line 'Final answer: X'.",
       "answer": "10",
       "type": "number"
     },
     {
       "id": "reason-04-discount",
+      "difficulty": "base",
       "prompt": "A jacket costs $80. It is discounted 25%, then an additional 10% is taken off the discounted price at checkout. What is the final price in dollars? End with a line 'Final answer: X'.",
       "answer": "54",
       "type": "number"
     },
     {
       "id": "reason-05-widgets",
+      "difficulty": "base",
       "prompt": "If 5 machines make 5 widgets in 5 minutes, how many minutes do 100 machines take to make 100 widgets? End with a line 'Final answer: X'.",
       "answer": "5",
       "type": "number"
     },
     {
       "id": "reason-06-pool",
+      "difficulty": "base",
       "prompt": "A pipe fills a pool in 6 hours. A drain empties it in 12 hours. With both open on an empty pool, how many hours to fill it? End with a line 'Final answer: X'.",
       "answer": "12",
       "type": "number"
     },
     {
       "id": "reason-07-logic-liar",
+      "difficulty": "base",
       "prompt": "On an island, knights always tell the truth and knaves always lie. A says 'B is a knave.' B says 'A and I are the same type.' What is B? Answer with a single word. End with a line 'Final answer: X'.",
       "answer": "knave",
       "type": "text"
     },
     {
       "id": "reason-08-sequence",
+      "difficulty": "base",
       "prompt": "What is the next number in the sequence 2, 6, 12, 20, 30, ...? End with a line 'Final answer: X'.",
       "answer": "42",
       "type": "number"
     },
     {
       "id": "reason-09-book",
+      "difficulty": "base",
       "prompt": "A book has 200 pages. On day 1 you read 20 pages. Each following day you read 5 more pages than the previous day. On which day do you finish the book? End with a line 'Final answer: X'.",
       "answer": "7",
       "type": "number"
     },
     {
       "id": "reason-10-remainder",
+      "difficulty": "base",
       "prompt": "What is the remainder when 2 raised to the 10th power is divided by 7? End with a line 'Final answer: X'.",
       "answer": "2",
       "type": "number"
     },
     {
       "id": "reason-11-marbles",
+      "difficulty": "base",
       "prompt": "A bag has 3 red and 2 blue marbles. You draw 2 without replacement. What is the probability both are red? Give the answer as a fraction in lowest terms like 3/10. End with a line 'Final answer: X'.",
       "answer": "3/10",
       "type": "text"
     },
     {
       "id": "reason-12-clock",
+      "difficulty": "base",
       "prompt": "How many degrees are between the hour and minute hands of a clock at 3:15? End with a line 'Final answer: X' where X is the number of degrees.",
       "answer": "7.5",
+      "type": "number"
+    },
+    {
+      "id": "reason-h1-bat-ball",
+      "difficulty": "hard",
+      "prompt": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in dollars? End with a line 'Final answer: X'.",
+      "answer": "0.05",
+      "type": "number"
+    },
+    {
+      "id": "reason-h2-compound",
+      "difficulty": "hard",
+      "prompt": "You invest $1000 at 10% annual interest compounded annually. What is the balance after 3 years, rounded to the nearest dollar? End with a line 'Final answer: X'.",
+      "answer": "1331",
+      "type": "number"
+    },
+    {
+      "id": "reason-h3-meet",
+      "difficulty": "hard",
+      "prompt": "Two trains are 300 miles apart on the same track, traveling toward each other. One goes 40 mph, the other 60 mph. How many hours until they meet? End with a line 'Final answer: X'.",
+      "answer": "3",
+      "type": "number"
+    },
+    {
+      "id": "reason-h4-paint",
+      "difficulty": "hard",
+      "prompt": "Alice paints a room in 4 hours and Bob paints the same room in 6 hours. Working together, how many hours does it take? Give a decimal. End with a line 'Final answer: X'.",
+      "answer": "2.4",
+      "type": "number"
+    },
+    {
+      "id": "reason-h5-banana",
+      "difficulty": "hard",
+      "prompt": "How many distinct arrangements are there of the letters in the word BANANA? End with a line 'Final answer: X'.",
+      "answer": "60",
+      "type": "number"
+    },
+    {
+      "id": "reason-h6-dice",
+      "difficulty": "hard",
+      "prompt": "You roll two fair six-sided dice. What is the probability the sum is at least 10? Give a fraction in lowest terms. End with a line 'Final answer: X'.",
+      "answer": "1/6",
+      "type": "text"
+    },
+    {
+      "id": "reason-h7-percent",
+      "difficulty": "hard",
+      "prompt": "A price went up 20% and then down 20%. It is now $96. What was the original price in dollars? End with a line 'Final answer: X'.",
+      "answer": "100",
+      "type": "number"
+    },
+    {
+      "id": "reason-h8-dayofweek",
+      "difficulty": "hard",
+      "prompt": "If today is Monday, what day of the week is it 100 days from now? Answer with the day name. End with a line 'Final answer: X'.",
+      "answer": "wednesday",
+      "type": "text"
+    },
+    {
+      "id": "reason-h9-two-digit",
+      "difficulty": "hard",
+      "prompt": "What is the smallest two-digit number that equals exactly 7 times the sum of its digits? End with a line 'Final answer: X'.",
+      "answer": "21",
+      "type": "number"
+    },
+    {
+      "id": "reason-h10-tax",
+      "difficulty": "hard",
+      "prompt": "A $200 item is marked 15% off, and then 8% sales tax is applied to the discounted price. What is the final price in dollars? End with a line 'Final answer: X'.",
+      "answer": "183.6",
       "type": "number"
     }
   ]

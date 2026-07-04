@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-// Luigi Codes eval harness (Phase 0 of the reasoning roadmap).
+// Luigi Codes eval harness (reasoning roadmap, Phase 0 + Phase 1 measurement).
 // Measures the local model on two suites:
 //   - coding:    executed pass@1 (model writes a JS function, appended tests run under node)
 //   - reasoning: multi-step answer accuracy (model ends with "Final answer: X", we compare)
+// Strategies (test-time compute, applied to reasoning):
+//   - single           one sample per task (default)
+//   - self-consistency sample N per task at higher temperature, majority-vote the answer
 // Zero runtime deps. Talks to the configured local inference server over HTTP.
-// It runs ONLY when a model server is up; with none, it prints a clear message and exits.
+// Runs ONLY when a model server is up; with none, prints a clear message and exits.
 //
 // Usage:
-//   npm run eval                       # both suites, defaults below
-//   npm run eval -- --suite reasoning  # one suite
+//   npm run eval                                             # both suites, single, defaults
+//   npm run eval -- --suite reasoning --difficulty hard      # only the hard reasoning tier
+//   npm run eval -- --strategy self-consistency --samples 5  # test-time compute on reasoning
 //   npm run eval -- --endpoint http://localhost:11434 --provider ollama --model qwen2.5-coder:7b
 //   npm run eval -- --limit 3          # first 3 tasks per suite (quick smoke)
 //   npm run eval -- --dry-run          # generate, do not execute coding tasks
@@ -42,17 +46,25 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+const explicitTemp = args.temperature !== undefined;
 const CONFIG = {
   endpoint: args.endpoint || process.env.LUIGI_EVAL_ENDPOINT || 'http://localhost:8080',
   provider: args.provider || process.env.LUIGI_EVAL_PROVIDER || 'custom', // custom | lmstudio | ollama
   model: args.model || process.env.LUIGI_EVAL_MODEL || 'mlx-community/Qwen2.5-Coder-7B-Instruct-4bit',
-  temperature: args.temperature !== undefined ? Number(args.temperature) : 0.2,
+  temperature: explicitTemp ? Number(args.temperature) : 0.2,
   timeoutMs: args.timeout !== undefined ? Number(args.timeout) : 60000,
-  suite: args.suite || 'all',      // coding | reasoning | all
+  suite: args.suite || 'all',            // coding | reasoning | all
+  difficulty: args.difficulty || 'all',  // all | base | hard
+  strategy: args.strategy || 'single',   // single | self-consistency
+  samples: args.samples !== undefined ? Number(args.samples) : 5,
   limit: args.limit !== undefined ? Number(args.limit) : Infinity,
   dryRun: Boolean(args['dry-run']),
   label: args.label || '',
+  explicitTemp,
 };
+// Self-consistency needs diverse samples; default to a warmer temperature unless the
+// caller pinned one explicitly.
+const SC_TEMPERATURE = explicitTemp ? CONFIG.temperature : 0.8;
 
 function stamp() {
   // Local scripts may use dates freely (unlike workflow scripts).
@@ -61,14 +73,14 @@ function stamp() {
 
 // --- model client ------------------------------------------------------------
 
-async function callModel(messages) {
+async function callModel(messages, temperature = CONFIG.temperature) {
   const isOllama = CONFIG.provider === 'ollama';
   const url = isOllama
     ? `${CONFIG.endpoint.replace(/\/$/, '')}/api/chat`
     : `${CONFIG.endpoint.replace(/\/$/, '')}/v1/chat/completions`;
   const body = isOllama
-    ? { model: CONFIG.model, messages, stream: false, options: { temperature: CONFIG.temperature } }
-    : { model: CONFIG.model, messages, stream: false, temperature: CONFIG.temperature };
+    ? { model: CONFIG.model, messages, stream: false, options: { temperature } }
+    : { model: CONFIG.model, messages, stream: false, temperature };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
@@ -159,23 +171,60 @@ function extractFinalAnswer(text) {
   return lines.length ? lines[lines.length - 1] : '';
 }
 
-function scoreReasoning(output, task) {
-  const raw = extractFinalAnswer(output);
+// Vote key for self-consistency: numeric tasks collapse to their number, text to normalized.
+function answerKey(raw, task) {
+  if (task.type === 'number') {
+    const nums = String(raw).match(/-?\d+(?:\.\d+)?/g);
+    if (nums && nums.length) return String(Number(nums[nums.length - 1]));
+  }
+  return normalizeAnswer(raw);
+}
+
+function answerMatches(candidate, task) {
   if (task.type === 'number') {
     const expected = Number(task.answer);
-    const nums = raw.match(/-?\d+(?:\.\d+)?/g);
+    const nums = String(candidate).match(/-?\d+(?:\.\d+)?/g);
     if (nums && nums.length) {
       const got = Number(nums[nums.length - 1]);
-      if (Math.abs(got - expected) < 1e-6) return { ok: true, got: String(got) };
+      return Math.abs(got - expected) < 1e-6;
     }
-    // last-resort: scan the whole output for the expected value as a token
-    const all = output.match(/-?\d+(?:\.\d+)?/g) || [];
-    if (all.some((n) => Math.abs(Number(n) - expected) < 1e-6)) return { ok: true, got: `${raw} (found in body)` };
-    return { ok: false, got: raw || '(none)' };
+    return false;
   }
-  const ok = normalizeAnswer(raw) === normalizeAnswer(task.answer)
-    || normalizeAnswer(output).includes(normalizeAnswer(task.answer));
-  return { ok, got: raw || '(none)' };
+  return normalizeAnswer(candidate) === normalizeAnswer(task.answer);
+}
+
+const REASONING_SYSTEM = 'Think step by step, then end with a line exactly like "Final answer: X".';
+
+async function scoreReasoningSingle(task) {
+  const out = await callModel([
+    { role: 'system', content: REASONING_SYSTEM },
+    { role: 'user', content: task.prompt },
+  ]);
+  const raw = extractFinalAnswer(out);
+  if (answerMatches(raw, task)) return { ok: true, got: raw };
+  // last-resort: expected value appears anywhere in the body
+  if (task.type === 'number' && answerMatches(out, task)) return { ok: true, got: `${raw} (found in body)` };
+  return { ok: false, got: raw || '(none)' };
+}
+
+async function scoreReasoningSelfConsistency(task) {
+  const votes = {};      // key -> count
+  const rawByKey = {};   // key -> a representative raw answer
+  for (let i = 0; i < CONFIG.samples; i++) {
+    const out = await callModel([
+      { role: 'system', content: REASONING_SYSTEM },
+      { role: 'user', content: task.prompt },
+    ], SC_TEMPERATURE);
+    const raw = extractFinalAnswer(out);
+    const key = answerKey(raw, task);
+    votes[key] = (votes[key] || 0) + 1;
+    if (!(key in rawByKey)) rawByKey[key] = raw;
+  }
+  const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  const [modalKey, modalCount] = ranked[0];
+  const ok = answerMatches(rawByKey[modalKey], task) || answerMatches(modalKey, task);
+  const tally = ranked.map(([k, c]) => `${k}:${c}`).join(' ');
+  return { ok, got: `${rawByKey[modalKey]} (${modalCount}/${CONFIG.samples}; votes ${tally})` };
 }
 
 function loadSuite(name) {
@@ -184,18 +233,20 @@ function loadSuite(name) {
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
-function limited(tasks) {
-  return Number.isFinite(CONFIG.limit) ? tasks.slice(0, CONFIG.limit) : tasks;
+function selectTasks(suite) {
+  let tasks = suite.tasks.map((t) => ({ difficulty: 'base', ...t }));
+  if (CONFIG.difficulty !== 'all') tasks = tasks.filter((t) => t.difficulty === CONFIG.difficulty);
+  if (Number.isFinite(CONFIG.limit)) tasks = tasks.slice(0, CONFIG.limit);
+  return tasks;
 }
 
 // --- suites ------------------------------------------------------------------
 
 async function runCoding() {
-  const suite = loadSuite('coding');
-  const tasks = limited(suite.tasks);
+  const tasks = selectTasks(loadSuite('coding'));
   const results = [];
   for (const t of tasks) {
-    process.stdout.write(`  [coding] ${t.id} ... `);
+    process.stdout.write(`  [coding/${t.difficulty}] ${t.id} ... `);
     let passed = false, detail = '';
     try {
       const out = await callModel([
@@ -209,41 +260,45 @@ async function runCoding() {
       detail = (err && err.message) || String(err);
     }
     console.log(passed ? 'PASS' : (CONFIG.dryRun ? 'GEN' : `FAIL${detail ? ' (' + detail + ')' : ''}`));
-    results.push({ id: t.id, passed, detail });
+    results.push({ id: t.id, difficulty: t.difficulty, passed, detail });
   }
-  return { suite: 'coding', results };
+  return { suite: 'coding', strategy: 'single', results };
 }
 
 async function runReasoning() {
-  const suite = loadSuite('reasoning');
-  const tasks = limited(suite.tasks);
+  const tasks = selectTasks(loadSuite('reasoning'));
+  const selfConsistent = CONFIG.strategy === 'self-consistency';
   const results = [];
   for (const t of tasks) {
-    process.stdout.write(`  [reasoning] ${t.id} ... `);
+    process.stdout.write(`  [reasoning/${t.difficulty}] ${t.id} ... `);
     let passed = false, got = '', detail = '';
     try {
-      const out = await callModel([
-        { role: 'system', content: 'Think step by step, then end with a line exactly like "Final answer: X".' },
-        { role: 'user', content: t.prompt },
-      ]);
-      const s = scoreReasoning(out, t);
+      const s = selfConsistent ? await scoreReasoningSelfConsistency(t) : await scoreReasoningSingle(t);
       passed = s.ok; got = s.got;
     } catch (err) {
       detail = (err && err.message) || String(err);
     }
     console.log(passed ? 'PASS' : `FAIL (got: ${got || detail})`);
-    results.push({ id: t.id, passed, got, detail });
+    results.push({ id: t.id, difficulty: t.difficulty, passed, got, detail });
   }
-  return { suite: 'reasoning', results };
+  return { suite: 'reasoning', strategy: selfConsistent ? `self-consistency x${CONFIG.samples}` : 'single', results };
 }
 
 // --- report ------------------------------------------------------------------
 
-function summarize(suiteResult) {
-  const total = suiteResult.results.length;
-  const passed = suiteResult.results.filter((r) => r.passed).length;
+function tally(results) {
+  const total = results.length;
+  const passed = results.filter((r) => r.passed).length;
   const pct = total ? Math.round((passed / total) * 1000) / 10 : 0;
   return { total, passed, pct };
+}
+
+function byDifficulty(results) {
+  const groups = {};
+  for (const r of results) (groups[r.difficulty] ||= []).push(r);
+  const out = {};
+  for (const [d, rs] of Object.entries(groups)) out[d] = tally(rs);
+  return out;
 }
 
 function writeReport(runs) {
@@ -256,10 +311,13 @@ function writeReport(runs) {
     provider: CONFIG.provider,
     model: CONFIG.model,
     temperature: CONFIG.temperature,
+    strategy: CONFIG.strategy,
+    samples: CONFIG.strategy === 'self-consistency' ? CONFIG.samples : 1,
+    difficulty: CONFIG.difficulty,
     dryRun: CONFIG.dryRun,
   };
   const summaries = {};
-  for (const r of runs) summaries[r.suite] = summarize(r);
+  for (const r of runs) summaries[r.suite] = { overall: tally(r.results), byDifficulty: byDifficulty(r.results) };
 
   const jsonPath = join(REPORTS_DIR, `eval-${when}.json`);
   writeFileSync(jsonPath, JSON.stringify({ meta, summaries, runs }, null, 2));
@@ -269,21 +327,25 @@ function writeReport(runs) {
   lines.push('');
   lines.push(`- model: \`${meta.model}\``);
   lines.push(`- endpoint: ${meta.endpoint} (${meta.provider}), temp ${meta.temperature}${meta.dryRun ? ', dry-run' : ''}`);
+  lines.push(`- strategy: ${meta.strategy}${meta.strategy === 'self-consistency' ? ` (${meta.samples} samples)` : ''}, difficulty: ${meta.difficulty}`);
   if (meta.label) lines.push(`- label: ${meta.label}`);
   lines.push('');
-  lines.push('| suite | passed | total | score |');
-  lines.push('|---|---|---|---|');
+  lines.push('| suite | tier | passed | total | score |');
+  lines.push('|---|---|---|---|---|');
   for (const r of runs) {
     const s = summaries[r.suite];
-    lines.push(`| ${r.suite} | ${s.passed} | ${s.total} | ${s.pct}% |`);
+    lines.push(`| ${r.suite} (${r.strategy}) | all | ${s.overall.passed} | ${s.overall.total} | ${s.overall.pct}% |`);
+    for (const [d, t] of Object.entries(s.byDifficulty)) {
+      lines.push(`| | ${d} | ${t.passed} | ${t.total} | ${t.pct}% |`);
+    }
   }
   lines.push('');
   for (const r of runs) {
-    lines.push(`## ${r.suite}`);
+    lines.push(`## ${r.suite} (${r.strategy})`);
     for (const item of r.results) {
       const mark = item.passed ? 'PASS' : 'FAIL';
       const extra = item.passed ? '' : ` (${item.got || item.detail || ''})`;
-      lines.push(`- ${mark} ${item.id}${extra}`);
+      lines.push(`- ${mark} [${item.difficulty}] ${item.id}${extra}`);
     }
     lines.push('');
   }
@@ -296,7 +358,8 @@ function writeReport(runs) {
 
 async function main() {
   console.log('Luigi Codes eval harness');
-  console.log(`  model=${CONFIG.model} endpoint=${CONFIG.endpoint} provider=${CONFIG.provider} temp=${CONFIG.temperature}`);
+  console.log(`  model=${CONFIG.model} endpoint=${CONFIG.endpoint} provider=${CONFIG.provider}`);
+  console.log(`  strategy=${CONFIG.strategy}${CONFIG.strategy === 'self-consistency' ? ` samples=${CONFIG.samples} sc-temp=${SC_TEMPERATURE}` : ` temp=${CONFIG.temperature}`} difficulty=${CONFIG.difficulty}`);
   await assertServerReachable();
 
   const runs = [];
@@ -307,7 +370,8 @@ async function main() {
   console.log('\nSummary:');
   for (const r of runs) {
     const s = summaries[r.suite];
-    console.log(`  ${r.suite.padEnd(10)} ${s.passed}/${s.total}  (${s.pct}%)`);
+    const tiers = Object.entries(s.byDifficulty).map(([d, t]) => `${d} ${t.passed}/${t.total}`).join(', ');
+    console.log(`  ${r.suite.padEnd(10)} (${r.strategy}) ${s.overall.passed}/${s.overall.total} (${s.overall.pct}%)  [${tiers}]`);
   }
   console.log(`\nReport written:\n  ${mdPath}\n  ${jsonPath}`);
 }
