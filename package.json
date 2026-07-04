@@ -202,7 +202,8 @@
     "test": "node ./out/test/runTest.js",
     "web": "node ./out/web/standalone.js",
     "audit:imports": "node scripts/audit-imports.mjs",
-    "audit:brand": "node scripts/audit-brand.mjs"
+    "audit:brand": "node scripts/audit-brand.mjs",
+    "audit:copy": "node scripts/audit-copy.mjs"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

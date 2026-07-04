@@ -115,7 +115,7 @@ export class MemorySystem {
         // server absent on this API version — try the next, then fall back
       }
     }
-    this.log('Memory: no ChromaDB server — using local persistence.');
+    this.log('Memory: no ChromaDB server; using local persistence.');
   }
 
   // ── Write path ─────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ export class MemorySystem {
           signal: AbortSignal.timeout(5000),
         });
       } catch (error) {
-        this.log(`Memory: Chroma add failed (${describe(error)}) — local mirror has it.`);
+        this.log(`Memory: Chroma add failed (${describe(error)}); local mirror has it.`);
       }
     }
   }
@@ -192,7 +192,7 @@ export class MemorySystem {
           }
         }
       } catch (error) {
-        this.log(`Memory: Chroma query failed (${describe(error)}) — using local mirror.`);
+        this.log(`Memory: Chroma query failed (${describe(error)}); using local mirror.`);
       }
     }
 
@@ -262,7 +262,7 @@ export class MemorySystem {
       await fs.mkdir(this.storageUri.fsPath, { recursive: true });
       await fs.writeFile(this.localFile, JSON.stringify(this.entries), 'utf8');
     } catch (error) {
-      this.log(`Memory: local save failed — ${describe(error)}`);
+      this.log(`Memory: local save failed: ${describe(error)}`);
     }
   }
 }

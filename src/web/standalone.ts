@@ -58,7 +58,7 @@ async function main(): Promise<void> {
 
   const { urls } = await server.start();
   console.log('');
-  console.log(`${GOLD}🍄 LUIGI CODES${RESET}${MUTED} — web chat · local · private${RESET}`);
+  console.log(`${GOLD}🍄 LUIGI CODES${RESET}${MUTED} · web chat · local · private${RESET}`);
   console.log('');
   console.log(`${MUTED}Open on this machine:${RESET}`);
   console.log(`  ${GOLD}${urls[0]}${RESET}`);

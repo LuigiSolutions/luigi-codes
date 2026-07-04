@@ -254,7 +254,7 @@ export class LuigiWebServer {
 
     const model = this.resolveModel(await this.listModels());
     if (!model) {
-      send({ error: `no model available at ${this.config.modelEndpoint} — is the model server running?` });
+      send({ error: `no model available at ${this.config.modelEndpoint}. Is the model server running?` });
       res.end();
       return;
     }
@@ -379,7 +379,7 @@ export class LuigiWebServer {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Luigi Codes — locked</title>
+<title>Luigi Codes · locked</title>
 <style>
   :root { ${cssVariables(this.config.theme ?? 'premium-black')} }
   body {
@@ -397,9 +397,9 @@ export class LuigiWebServer {
 </head>
 <body>
   <div>
-    <div class="eyebrow">Luigi Solutions — Private Local AI</div>
+    <div class="eyebrow">Luigi Solutions · Private Local AI</div>
     <h1>This chat is token-locked.</h1>
-    <p>Open the exact link Luigi printed when the web app started — it carries the access token.</p>
+    <p>Open the exact link Luigi printed when the web app started. It carries the access token.</p>
   </div>
 </body>
 </html>`;
@@ -729,7 +729,7 @@ export class LuigiWebServer {
     <div class="inner" id="thread">
       <div id="welcome">
         ${markHtml}
-        <div class="eyebrow reveal" style="animation-delay: 80ms">Luigi Solutions — Private Local AI</div>
+        <div class="eyebrow reveal" style="animation-delay: 80ms">Luigi Solutions · Private Local AI</div>
         <h1 class="reveal" style="animation-delay: 160ms">What are we building today?</h1>
         <p class="sub reveal" style="animation-delay: 240ms">Runs on your machine. Nothing leaves your network.</p>
         <div id="chips" class="reveal" style="animation-delay: 320ms">
@@ -745,7 +745,7 @@ export class LuigiWebServer {
   <footer>
     <div class="inner">
       <div id="composer">
-        <textarea id="input" rows="1" aria-label="Message Luigi" placeholder="Ask Luigi — Shift+Enter for a new line"></textarea>
+        <textarea id="input" rows="1" aria-label="Message Luigi" placeholder="Ask Luigi (Shift+Enter for a new line)"></textarea>
         <button id="send" title="Send">↑</button>
       </div>
       <div class="mode-row">
@@ -862,7 +862,7 @@ export class LuigiWebServer {
     showWelcome();
   });
 
-  // Copy buttons — clipboard API needs a secure context (not the case over
+  // Copy buttons: clipboard API needs a secure context (not the case over
   // plain LAN http), so fall back to a selection-based copy.
   function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
@@ -984,7 +984,7 @@ export class LuigiWebServer {
         addNote('Stopped.', true);
         announce('Stopped.');
       } else if (error) {
-        addNote('Luigi could not reach the local model — ' + error.message +
+        addNote('Luigi could not reach the local model: ' + error.message +
           '. Is the model server running on this machine?', false);
         announce('Error: ' + error.message);
         refreshStatus();

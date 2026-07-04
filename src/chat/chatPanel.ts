@@ -202,7 +202,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
         interrupted: abort.signal.aborted,
         message: abort.signal.aborted
           ? 'Stopped.'
-          : `Luigi could not reach a local model — ${message}. Start Ollama (\`ollama serve\`) or check luigi.model.endpoint.`,
+          : `Luigi could not reach a local model: ${message}. Start Ollama (\`ollama serve\`) or check luigi.model.endpoint.`,
       });
     }
   }
@@ -221,7 +221,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
         return;
       }
       const message = error instanceof Error ? error.message : String(error);
-      this.post({ type: 'agentDone', success: false, summary: `Agent run failed — ${message}` });
+      this.post({ type: 'agentDone', success: false, summary: `Agent run failed: ${message}` });
     }
   }
 
@@ -300,7 +300,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
     overflow: hidden;
   }
 
-  /* ── Header — logo left, live model badge right ─────────────────────── */
+  /* ── Header: logo left, live model badge right ─────────────────────── */
   header {
     display: flex;
     align-items: center;
@@ -342,7 +342,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
   }
   .ghost-btn:hover { color: var(--luigi-gold); border-color: var(--luigi-border-accent); }
 
-  /* ── Context bar — where Luigi is looking ───────────────────────────── */
+  /* ── Context bar: where Luigi is looking ───────────────────────────── */
   #contextBar {
     display: flex;
     align-items: center;
@@ -358,7 +358,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
   }
   #contextBar .dot { color: var(--luigi-gold); }
   #contextBar span { flex: none; }
-  /* Narrow panels: stats give way first, the file name second — never clip
+  /* Narrow panels: stats give way first, the file name second, never clip
      mid-character, always ellipsize. */
   #contextBar .ctx-file {
     color: var(--luigi-ink-muted);
@@ -456,9 +456,9 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
   .msg.assistant .body p { margin: 8px 0; }
   .msg.assistant .body ul, .msg.assistant .body ol { margin: 8px 0 8px 20px; }
   .msg.assistant .body li { margin: 4px 0; }
-  /* Bold stays ink — gold is an accent, not a highlighter for every emphasis. */
+  /* Bold stays ink: gold is an accent, not a highlighter for every emphasis. */
   .msg.assistant .body strong { color: var(--luigi-ink); font-weight: 600; }
-  /* Links ARE interactive — gold is the right accent here. */
+  /* Links ARE interactive: gold is the right accent here. */
   .msg.assistant .body a {
     color: var(--luigi-gold);
     text-decoration: underline;
@@ -542,7 +542,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
     color: var(--luigi-gold);
     margin-bottom: 12px;
   }
-  /* Canonical loader cadence — the 3s gentle breathe, not a fast spin. */
+  /* Canonical loader cadence: the 3s gentle breathe, not a fast spin. */
   @keyframes spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.05); } 100% { transform: rotate(360deg) scale(1); } }
   .spinner {
     width: 12px; height: 12px;
@@ -597,7 +597,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
   #modeToggle { display: flex; gap: 0; border: 1px solid var(--luigi-border-subtle); border-radius: var(--luigi-radius-sm); overflow: hidden; }
   #modeToggle button {
     background: none; border: none; cursor: pointer;
-    color: var(--luigi-ink-muted); /* functional control text — never ink-faint */
+    color: var(--luigi-ink-muted); /* functional control text, never ink-faint */
     font-family: var(--luigi-font-display);
     font-size: 10px;
     letter-spacing: var(--luigi-tracking-eyebrow);
@@ -606,7 +606,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
     transition: all var(--luigi-duration-fast) var(--luigi-ease);
   }
   #modeToggle button.active { background: var(--luigi-gold); color: var(--luigi-bg); }
-  /* The container clips outward outlines — draw focus inside the control. */
+  /* The container clips outward outlines: draw focus inside the control. */
   #modeToggle button:focus-visible { outline-offset: -2px; }
   /* Gold outline on the gold-filled active segment would be invisible. */
   #modeToggle button.active:focus-visible { outline-color: var(--luigi-bg); }
@@ -620,7 +620,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
 
   @media (prefers-reduced-motion: reduce) {
     .reveal { animation: none; }
-    /* A frozen quarter-arc reads as a glitch — hide it; the send button's
+    /* A frozen quarter-arc reads as a glitch: hide it; the send button's
        stop state still signals busy. */
     .spinner { display: none; }
     .chip:hover { transform: none; }
@@ -647,7 +647,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
   <main id="thread">
     <div id="welcome">
       <img class="mark reveal" src="${iconUri}" alt="" />
-      <div class="eyebrow reveal" style="animation-delay: 80ms">Luigi Solutions — Private Local AI</div>
+      <div class="eyebrow reveal" style="animation-delay: 80ms">Luigi Solutions · Private Local AI</div>
       <h1 class="reveal" style="animation-delay: 160ms">What are we building today?</h1>
       <p class="sub reveal" style="animation-delay: 240ms">Your code never leaves this machine.</p>
       <div id="chips" class="reveal" style="animation-delay: 320ms">
@@ -662,7 +662,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
 
   <footer>
     <div id="composer">
-      <textarea id="input" rows="1" aria-label="Message Luigi" placeholder="Ask Luigi — Shift+Enter for a new line"></textarea>
+      <textarea id="input" rows="1" aria-label="Message Luigi" placeholder="Ask Luigi (Shift+Enter for a new line)"></textarea>
       <button id="send" title="Send">↑</button>
     </div>
     <div class="mode-row">
@@ -765,8 +765,8 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
     modeChat.setAttribute('aria-pressed', next === 'chat' ? 'true' : 'false');
     modeAgent.setAttribute('aria-pressed', next === 'agent' ? 'true' : 'false');
     input.placeholder = next === 'agent'
-      ? 'Describe a task — Luigi plans, asks approval, then executes'
-      : 'Ask Luigi — Shift+Enter for a new line';
+      ? 'Describe a task. Luigi plans, asks approval, then executes'
+      : 'Ask Luigi (Shift+Enter for a new line)';
   }
   modeChat.addEventListener('click', function () { setMode('chat'); });
   modeAgent.addEventListener('click', function () { setMode('agent'); });
@@ -840,7 +840,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
       case 'assistantStart': {
         streamEl = addMessage('assistant', '🍄 Luigi · ' + esc(msg.model), '');
         streamEl.classList.add('streaming');
-        // One text node, appended to — replacing textContent per token forces
+        // One text node, appended to: replacing textContent per token forces
         // a full re-layout of the whole message on every token.
         streamNode = document.createTextNode('');
         streamEl.appendChild(streamNode);
@@ -876,7 +876,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
         // Only append to a live card. After New Chat clears the thread
         // (agentCard = null), a late progress event must not resurrect a
         // zombie card into the fresh conversation. The 'done' phase is a
-        // lifecycle marker — agentDone renders the real summary line.
+        // lifecycle marker; agentDone renders the real summary line.
         if (agentCard && PHASES.indexOf(ev.phase) > -1) {
           agentLine(ev.phase, ev.message, ev.level === 'error' ? 'bad' : ev.level === 'success' ? 'ok' : '');
         }
@@ -893,7 +893,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
       case 'error': {
         hideWelcome();
         if (streamEl && !streamEl.textContent) {
-          // Never received a token — drop the empty bubble, it's just noise.
+          // Never received a token: drop the empty bubble, it's just noise.
           var emptyMsg = streamEl.closest('.msg');
           if (emptyMsg) { emptyMsg.parentNode.removeChild(emptyMsg); }
         } else if (streamEl) {
@@ -903,7 +903,7 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
           streamEl.innerHTML = renderMarkdown(streamEl.textContent);
         }
         var note = document.createElement('div');
-        // A user-initiated stop is not a failure — style it as a quiet note.
+        // A user-initiated stop is not a failure: style it as a quiet note.
         note.className = (msg.interrupted ? 'stopped-note' : 'error-msg') + ' reveal';
         note.textContent = msg.message;
         thread.appendChild(note);

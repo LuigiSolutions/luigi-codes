@@ -29,6 +29,11 @@ cost. Everything runs on-machine; no cloud dependency, ever.
   path guarding. TypeScript strict, no `any` without written reason.
 - Machine: Apple M4 / 16GB. Ollama may not be installed — everything you build/test
   must pass **WITHOUT a model server running**.
+- **NO EM DASHES (—) in anything a user sees** (owner rule, 2026-07-04): site,
+  web app, extension UI strings, emails, SVGs. Use `·`, `:`, `;`, `,`, `()`, or a
+  new sentence instead. Enforced by `npm run audit:copy` (string literals in
+  src/ + api/, whole-file for site/, media/, package.json). Code comments in
+  .ts/.mjs files are exempt; docs (README etc.) are exempt but keep new copy clean.
 
 ## Verification loop (run all of these before calling anything done)
 
@@ -36,7 +41,8 @@ cost. Everything runs on-machine; no cloud dependency, ever.
 npm run compile          # zero errors, zero warnings
 npm test                 # integration suite T1–T10 in a real extension host
 npm run audit:imports    # every import resolves, zero circular deps
-npm run audit:brand      # every hex/rgba in src/, media/, package.json on-palette
+npm run audit:brand      # every hex/rgba in src/, media/, site/, package.json on-palette
+npm run audit:copy       # zero em dashes in user-displayed copy
 ```
 
 Note for agent sessions: `npm test` spawns a downloaded VS Code; the launcher

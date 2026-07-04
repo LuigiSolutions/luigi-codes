@@ -128,7 +128,7 @@ export class LuigiAgent implements vscode.Disposable {
       const approved = await this.requestApproval(plan);
       if (!approved) {
         this.emit('approve', 'Plan rejected by user.', 'error');
-        return this.finish(task, [], false, 'Plan rejected — nothing was executed.', started);
+        return this.finish(task, [], false, 'Plan rejected; nothing was executed.', started);
       }
       this.emit('approve', 'Plan approved.', 'success');
 
@@ -136,7 +136,7 @@ export class LuigiAgent implements vscode.Disposable {
       const outcomes: StepOutcome[] = [];
       for (const step of plan) {
         if (signal?.aborted) {
-          this.emit('execute', 'Stopped by user — remaining steps skipped.', 'error');
+          this.emit('execute', 'Stopped by user; remaining steps skipped.', 'error');
           return this.finish(
             task,
             outcomes,
@@ -202,7 +202,7 @@ export class LuigiAgent implements vscode.Disposable {
     // Unknown tool names become reasoning steps instead of guaranteed failures.
     for (const step of steps) {
       if (step.tool && !this.tools.has(step.tool)) {
-        this.log(`Plan referenced unknown tool "${step.tool}" — demoted to reasoning step.`);
+        this.log(`Plan referenced unknown tool "${step.tool}"; demoted to reasoning step.`);
         step.description = `${step.description} (wanted unavailable tool: ${step.tool})`;
         step.tool = undefined;
       }
@@ -355,7 +355,7 @@ export class LuigiAgent implements vscode.Disposable {
       }
       lastError = result.error ?? result.output;
       const strategy = this.getFixStrategy(step, lastError, attempt, maxRetries);
-      this.emit('execute', `Step ${step.id} attempt ${attempt} failed — ${strategy.note}`, 'error');
+      this.emit('execute', `Step ${step.id} attempt ${attempt} failed: ${strategy.note}`, 'error');
       if (strategy.action === 'skip') {
         break;
       }
@@ -429,7 +429,7 @@ export class LuigiAgent implements vscode.Disposable {
     const transcript = outcomes
       .map(
         (o) =>
-          `Step ${o.step.id} — ${o.step.description} [${o.ok ? 'OK' : 'FAILED'}]\n${o.output.slice(0, 1200)}`
+          `Step ${o.step.id}: ${o.step.description} [${o.ok ? 'OK' : 'FAILED'}]\n${o.output.slice(0, 1200)}`
       )
       .join('\n\n');
     try {

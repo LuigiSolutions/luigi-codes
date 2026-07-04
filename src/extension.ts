@@ -29,7 +29,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const log = (message: string): void => {
     channel.appendLine(`🍄 [${new Date().toISOString()}] ${message}`);
   };
-  log('Luigi Codes activating — premium local AI, Luigi Solutions.');
+  log('Luigi Codes activating. Premium local AI by Luigi Solutions.');
 
   // ── Core systems ─────────────────────────────────────────────────────────
   const router = new ModelRouter(log);
@@ -62,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.name = 'Luigi Codes';
   statusBarItem.text = '🍄 Luigi';
-  statusBarItem.tooltip = 'Luigi Codes — click for agent status';
+  statusBarItem.tooltip = 'Luigi Codes · click for agent status';
   statusBarItem.command = 'luigi.showAgentStatus';
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
@@ -95,7 +95,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       log(
         models.length > 0
           ? `Detected ${models.length} local model(s): ${models.map((m) => m.id).join(', ')}`
-          : 'No local models detected — is Ollama running? (https://ollama.com)'
+          : 'No local models detected. Is Ollama running? (https://ollama.com)'
       );
     } catch (error) {
       log(`Model detection failed: ${describe(error)}`);
@@ -238,15 +238,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
               .map(([id, p]) => `${id} ${(p.successRate * 100).toFixed(0)}% over ${p.runs}`)
               .join(' · ');
       const lines = [
-        `$(circuit-board) Models — ${routerStatus}`,
-        `$(pulse) Observed — ${perfLine}`,
-        `$(database) Index — ${indexStats.fileCount} files · ${indexStats.symbolCount} symbols · ${indexStats.language || 'no dominant language'}`,
-        `$(history) Memory — ${memoryCount} tasks remembered (${services.memory.status})`,
-        `$(rocket) Self-improvement — ${tune.datasetSize} training pairs · ${tune.ready ? 'fine-tune ready' : tune.reason}`,
-        `$(tools) Tools — ${services.tools.list().length} registered`,
+        `$(circuit-board) Models: ${routerStatus}`,
+        `$(pulse) Observed: ${perfLine}`,
+        `$(database) Index: ${indexStats.fileCount} files · ${indexStats.symbolCount} symbols · ${indexStats.language || 'no dominant language'}`,
+        `$(history) Memory: ${memoryCount} tasks remembered (${services.memory.status})`,
+        `$(rocket) Self-improvement: ${tune.datasetSize} training pairs · ${tune.ready ? 'fine-tune ready' : tune.reason}`,
+        `$(tools) Tools: ${services.tools.list().length} registered`,
       ];
       const pick = await vscode.window.showQuickPick(lines, {
-        title: '🍄 Luigi Codes — Agent Status',
+        title: '🍄 Luigi Codes · Agent Status',
         placeHolder: 'Luigi Solutions · private local AI',
       });
       if (pick) {
@@ -261,7 +261,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const primary = webServer.urls[0];
         const phone = webServer.urls[1];
         const choice = await vscode.window.showInformationMessage(
-          `Luigi web app is running — ${webServer.urls.length} URL(s) available.`,
+          `Luigi web app is running: ${webServer.urls.length} URL(s) available.`,
           'Open in Browser',
           phone ? 'Copy Phone URL' : 'Copy URL',
           'Stop Server'
@@ -298,7 +298,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const phone = urls[1];
         const detail = phone
           ? `Phone (same Wi-Fi): ${phone}`
-          : 'Local only — enable luigi.web.allowLan to reach it from your phone.';
+          : 'Local only. Enable luigi.web.allowLan to reach it from your phone.';
         log(`Web app started: ${urls.join(' · ')}`);
         const choice = await vscode.window.showInformationMessage(
           `🍄 Luigi web app running at ${urls[0]}`,
@@ -343,7 +343,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       );
       log(`Exported ${count} training example(s) to ${dir.fsPath}`);
       const choice = await vscode.window.showInformationMessage(
-        `Luigi: exported ${count} training example(s) to ${dir.fsPath}. Fine-tune locally with MLX — see TRAINING.md.`,
+        `Luigi: exported ${count} training example(s) to ${dir.fsPath}. Fine-tune locally with MLX; see TRAINING.md.`,
         'Reveal Folder'
       );
       if (choice === 'Reveal Folder') {
@@ -406,7 +406,7 @@ class LuigiTerminalChat implements vscode.Pseudoterminal {
   open(): void {
     this.write(
       `${LuigiTerminalChat.GOLD}🍄 LUIGI CODES${LuigiTerminalChat.RESET}` +
-        `${LuigiTerminalChat.MUTED} — terminal chat · local · private${LuigiTerminalChat.RESET}\r\n\r\n`
+        `${LuigiTerminalChat.MUTED} · terminal chat · local · private${LuigiTerminalChat.RESET}\r\n\r\n`
     );
     this.prompt();
   }

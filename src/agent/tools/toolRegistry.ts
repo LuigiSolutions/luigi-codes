@@ -313,7 +313,7 @@ export function createDefaultTools(log: Logger): LuigiTool[] {
             );
           }
         }
-        return { ok: true, output: lines.length > 0 ? cap(lines.join('\n')) : 'No diagnostics — clean.' };
+        return { ok: true, output: lines.length > 0 ? cap(lines.join('\n')) : 'No diagnostics: clean.' };
       },
     },
     {

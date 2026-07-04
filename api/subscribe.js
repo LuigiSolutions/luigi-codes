@@ -1,12 +1,12 @@
 /**
- * Luigi Codes site — install-gate lead capture.
+ * Luigi Codes site: install-gate lead capture.
  *
  * POST /api/subscribe  { firstName, email, company? (honeypot) }
  *
  * Stores the lead in the project's Vercel Blob store (leads/<sha256(email)>.json,
  * deterministic path = free dedupe) and sends the branded welcome email via
  * Resend when RESEND_API_KEY is configured. With no key, capture still works
- * and the response says emailed:false — the site flow is never blocked.
+ * and the response says emailed:false; the site flow is never blocked.
  *
  * Zero npm dependencies: Blob and Resend are called over their REST APIs.
  */
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
   const email = String(body.email || '').trim().toLowerCase();
   const honeypot = String(body.company || '');
 
-  // Bots fill every field — accept silently, store nothing, email nobody.
+  // Bots fill every field. Accept silently, store nothing, email nobody.
   if (honeypot.length > 0) {
     res.status(200).json({ stored: true, emailed: false });
     return;
@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
       res.status(502).json({ error: 'could not store signup' });
       return;
     }
-    // Already subscribed — fine, but no second welcome email.
+    // Already subscribed: fine, but no second welcome email.
   }
 
   // ── Welcome email (only for new signups, only when a sender is configured) ─
@@ -125,16 +125,16 @@ function welcomeText(name) {
   return [
     `Hi ${name},`,
     '',
-    'Welcome to Luigi Codes — the coding agent that runs entirely on your machine.',
+    'Welcome to Luigi Codes, the coding agent that runs entirely on your machine.',
     'No API keys, no per-token bills, no code leaving your computer.',
     '',
     'Get set up in five minutes: https://luigi-codes.vercel.app/#install',
     'Source & docs: https://github.com/LuigiSolutions/luigi-codes',
     '',
-    "You'll hear from us occasionally about new features and important releases — nothing else, no spam.",
+    "You'll hear from us occasionally about new features and important releases. Nothing else, no spam.",
     "Don't want these? Just reply \"unsubscribe\".",
     '',
-    '— Kalob, Luigi Solutions',
+    'Kalob, Luigi Solutions',
     'Built to be owned.',
   ].join('\n');
 }
@@ -147,12 +147,12 @@ function welcomeHtml(name) {
   <div style="max-width:560px;margin:0 auto;padding:40px 24px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="text-align:center;padding-bottom:28px;">
       <div style="font-size:44px;line-height:1;">🍄</div>
-      <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:${GOLD};padding-top:14px;">Luigi Solutions — Private Local AI</div>
+      <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:${GOLD};padding-top:14px;">Luigi Solutions · Private Local AI</div>
     </div>
     <div style="background:${SURFACE};border:1px solid ${HAIRLINE};border-radius:4px;padding:32px 28px;">
       <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:26px;color:${INK};margin:0 0 16px;">Welcome, ${safeName}.</h1>
       <p style="color:${INK_MUTED};font-size:15px;line-height:1.7;margin:0 0 14px;">
-        Luigi Codes is the coding agent that runs <em style="color:${INK};">entirely on your machine</em> —
+        Luigi Codes is the coding agent that runs <em style="color:${INK};">entirely on your machine</em>:
         chat, an autonomous agent with a human approval gate, codebase intelligence, memory,
         and a model that fine-tunes on your own corrections. No API keys. No per-token bills.
         No code leaving your computer.
@@ -168,12 +168,12 @@ function welcomeHtml(name) {
       </div>
       <p style="color:${INK_MUTED};font-size:14px;line-height:1.7;margin:0;">
         From here on, we'll email you occasionally about new features and important
-        releases — nothing else, no spam. The source lives at
+        releases. Nothing else, no spam. The source lives at
         <a href="https://github.com/LuigiSolutions/luigi-codes" style="color:${GOLD};">github.com/LuigiSolutions/luigi-codes</a>.
       </p>
     </div>
     <p style="color:${INK_MUTED};font-size:13px;text-align:center;padding-top:24px;margin:0;">
-      — Kalob, Luigi Solutions · <span style="color:${GOLD};">Built to be owned.</span><br>
+      Kalob, Luigi Solutions · <span style="color:${GOLD};">Built to be owned.</span><br>
       <span style="font-size:12px;">Don't want these emails? Just reply "unsubscribe".</span>
     </p>
   </div>

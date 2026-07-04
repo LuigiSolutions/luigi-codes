@@ -165,7 +165,7 @@ export class ModelRouter implements vscode.Disposable {
   statusSummary(): string {
     const available = this.models.filter((m) => m.available);
     if (available.length === 0) {
-      return 'no models — start Ollama';
+      return 'no models · start Ollama';
     }
     const preferred = this.route({ kind: 'code-generation' }).model.id;
     return `${available.length} model${available.length === 1 ? '' : 's'} · ${preferred}`;

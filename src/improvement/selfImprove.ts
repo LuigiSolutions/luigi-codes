@@ -87,7 +87,7 @@ interface ProducedFile {
 /** Failure category → the standing rule that counters it. */
 const CATEGORY_RULES: Record<FailureCategory, PromptAdjustment['rule']> = {
   'plan-not-parseable':
-    'Output ONLY the JSON array — no prose before or after it, no markdown fences.',
+    'Output ONLY the JSON array, no prose before or after it, no markdown fences.',
   'tool-failure':
     'Before editing or deleting a file, verify it exists first (grep or readFile).',
   'plan-rejected':
@@ -165,7 +165,7 @@ export class SelfImprovement {
 
     if (record.success) {
       if (record.durationMs > 120_000) {
-        lessons.push('Slow success — consider smaller plans for similar prompts.');
+        lessons.push('Slow success; consider smaller plans for similar prompts.');
       }
       if (record.filesTouched.length > 0) {
         lessons.push(`Touched ${record.filesTouched.length} file(s) successfully.`);
@@ -345,7 +345,7 @@ export class SelfImprovement {
     if (acceptance < FINE_TUNE_MIN_ACCEPTANCE) {
       return {
         ready: false,
-        reason: `acceptance rate ${(acceptance * 100).toFixed(0)}% — below ${FINE_TUNE_MIN_ACCEPTANCE * 100}%`,
+        reason: `acceptance rate ${(acceptance * 100).toFixed(0)}%, below ${FINE_TUNE_MIN_ACCEPTANCE * 100}%`,
         datasetSize,
       };
     }
@@ -405,7 +405,7 @@ export class SelfImprovement {
       await fs.writeFile(this.stateFile, JSON.stringify(this.state), 'utf8');
     } catch (error) {
       this.log(
-        `Self-improvement: save failed — ${error instanceof Error ? error.message : String(error)}`
+        `Self-improvement: save failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
