@@ -100,10 +100,19 @@ async function callModel(messages, temperature = CONFIG.temperature) {
       ? data?.message?.content
       : data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string') throw new Error('Model response had no message content.');
-    return stripStopMarkers(content);
+    return stripThinkBlocks(stripStopMarkers(content));
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Reasoning-distilled models (DeepSeek-R1 distills, QwQ) emit a long <think>...</think>
+// chain before the answer. Score only the post-reasoning text, or the chain's own
+// numbers corrupt answer extraction the same way stop markers did. If the closing tag
+// is missing (model ran out of tokens mid-thought) leave the text as-is.
+function stripThinkBlocks(text) {
+  const close = text.lastIndexOf('</think>');
+  return close === -1 ? text : text.slice(close + '</think>'.length).trim();
 }
 
 // Some raw servers (mlx-lm observed on :8080) leak chat-template stop markers as
@@ -378,6 +387,11 @@ function runSelftest() {
   check('strip im_end', stripStopMarkers('wednesday<|im_end|>') === 'wednesday');
   check('strip endoftext + trailing junk', stripStopMarkers('42<|endoftext|>\nnoise') === '42');
   check('no marker untouched', stripStopMarkers('hello world') === 'hello world');
+
+  // Regression: <think> stripping for reasoning-distilled models (R1 / QwQ).
+  check('strip think block', stripThinkBlocks('<think>1+1=3? no, 2</think>Final answer: 2') === 'Final answer: 2');
+  check('no think tag untouched', stripThinkBlocks('Final answer: 5') === 'Final answer: 5');
+  check('unclosed think left as-is', stripThinkBlocks('<think>still reasoning') === '<think>still reasoning');
 
   // Answer matching across formats.
   check('number exact', answerMatches('Final answer: 7', { type: 'number', answer: '7' }));
