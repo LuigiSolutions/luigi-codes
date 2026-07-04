@@ -37,20 +37,11 @@ update CHANGELOG.md, and run `npx vsce publish` again. The listing appears at
 `https://marketplace.visualstudio.com/items?itemName=LuigiSolutions.luigi-codes`
 within a few minutes of the first publish.
 
-## Step 4 — (Recommended) The GitHub repo behind the listing
+## Step 4 — The GitHub repo behind the listing ✅ DONE (2026-07-04)
 
-`package.json` points at `https://github.com/LuigiSolutions/luigi-codes`, which
-doesn't exist yet. The Marketplace shows this link on the listing (a dead link
-looks bad, but publishing works without it). To create it:
-
-```bash
-git init && git add -A && git commit -m "Luigi Codes 0.2.0"
-gh repo create LuigiSolutions/luigi-codes --public --source . --push
-# or create it in the GitHub UI and: git remote add origin … && git push -u origin main
-```
-
-If you'd rather not have a public repo, delete the `"repository"` block from
-package.json before publishing (vsce will warn, but publishes).
+`https://github.com/LuigiSolutions/luigi-codes` is live: public, `main` branch,
+v0.2.0 as the initial commit. HANDOFF.md and `.claude/` are gitignored (session
+notes stay off GitHub). Day-to-day: commit and `git push` as usual.
 
 ## Decisions to confirm before publishing (owner's call)
 
@@ -58,8 +49,6 @@ package.json before publishing (vsce will warn, but publishes).
   all rights reserved" — written to protect the Luigi Solutions brand. If you'd
   rather go open source (MIT/Apache-2.0), replace LICENSE.md and set
   `"license": "MIT"` in package.json.
-- **Repository visibility.** Public repo, private repo + dead link removed, or
-  no repo (see Step 4).
 - **The README is the store page.** It currently documents development
   (`npm install`, F5) alongside user features — fine for a v0.2, but worth a
   read-through with "a stranger sees this" eyes before Step 3.
