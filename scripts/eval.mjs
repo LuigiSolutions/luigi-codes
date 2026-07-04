@@ -224,7 +224,17 @@ function answerMatches(candidate, task) {
     }
     return false;
   }
-  return normalizeAnswer(candidate) === normalizeAnswer(task.answer);
+  // text
+  const na = normalizeAnswer(candidate);
+  const nb = normalizeAnswer(task.answer);
+  if (na === nb) return true;
+  // Whole-word match in the raw answer, so "...is a Wednesday" counts for "wednesday"
+  // but "the answer is knight" does not match "knave" via a stray substring.
+  const esc = String(task.answer).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, 'i').test(String(candidate))) return true;
+  // Fractions may sit inside a longer stated answer, e.g. "= 6/36 = 1/6".
+  if (String(task.answer).includes('/') && na.includes(nb)) return true;
+  return false;
 }
 
 const REASONING_SYSTEM = 'Think step by step, then end with a line exactly like "Final answer: X".';
@@ -415,6 +425,11 @@ function runSelftest() {
   check('bold inline answer', extractFinalAnswer('Final answer: **60**') === '60');
   check('answer on line after bold header', extractFinalAnswer('**Final answer:**\nWednesday') === 'Wednesday');
   check('number matches bolded', answerMatches('**42**', { type: 'number', answer: '42' }));
+
+  // Regression: sentence-form text answers match, negations do not.
+  check('text word in sentence', answerMatches('100 days from Monday is a Wednesday.', { type: 'text', answer: 'wednesday' }));
+  check('text negation not matched', !answerMatches('the answer is knight', { type: 'text', answer: 'knave' }));
+  check('fraction inside longer answer', answerMatches('= 6/36 = 1/6', { type: 'text', answer: '1/6' }));
 
   // Vote keys collapse equivalent answers so self-consistency tallies correctly.
   check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');

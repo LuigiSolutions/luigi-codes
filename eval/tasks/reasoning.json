@@ -155,6 +155,76 @@
       "prompt": "A $200 item is marked 15% off, and then 8% sales tax is applied to the discounted price. What is the final price in dollars? End with a line 'Final answer: X'.",
       "answer": "183.6",
       "type": "number"
+    },
+    {
+      "id": "reason-e1-divisor-sum",
+      "difficulty": "expert",
+      "prompt": "What is the sum of all positive divisors of 360 (including 1 and 360)? End with a line 'Final answer: X'.",
+      "answer": "1170",
+      "type": "number"
+    },
+    {
+      "id": "reason-e2-last-two-digits",
+      "difficulty": "expert",
+      "prompt": "What are the last two digits of 7 raised to the power 2023? Give the two-digit number. End with a line 'Final answer: X'.",
+      "answer": "43",
+      "type": "number"
+    },
+    {
+      "id": "reason-e3-heron",
+      "difficulty": "expert",
+      "prompt": "A triangle has side lengths 13, 14, and 15. What is its area? End with a line 'Final answer: X'.",
+      "answer": "84",
+      "type": "number"
+    },
+    {
+      "id": "reason-e4-same-suit",
+      "difficulty": "expert",
+      "prompt": "Three cards are drawn at random from a standard 52-card deck. What is the probability that all three are the same suit? Give a fraction in lowest terms. End with a line 'Final answer: X'.",
+      "answer": "22/425",
+      "type": "text"
+    },
+    {
+      "id": "reason-e5-acid",
+      "difficulty": "expert",
+      "prompt": "A 40-liter mixture is 25% acid. How many liters of pure acid must be added so the mixture becomes 40% acid? End with a line 'Final answer: X'.",
+      "answer": "10",
+      "type": "number"
+    },
+    {
+      "id": "reason-e6-sum-squares",
+      "difficulty": "expert",
+      "prompt": "Two numbers sum to 30, and the sum of their squares is 468. What is their product? End with a line 'Final answer: X'.",
+      "answer": "216",
+      "type": "number"
+    },
+    {
+      "id": "reason-e7-even-distinct",
+      "difficulty": "expert",
+      "prompt": "How many 4-digit numbers (1000 to 9999) have all distinct digits and are even? End with a line 'Final answer: X'.",
+      "answer": "2296",
+      "type": "number"
+    },
+    {
+      "id": "reason-e8-clock-820",
+      "difficulty": "expert",
+      "prompt": "What is the angle in degrees between the hour and minute hands of a clock at 8:20? End with a line 'Final answer: X'.",
+      "answer": "130",
+      "type": "number"
+    },
+    {
+      "id": "reason-e9-mod13",
+      "difficulty": "expert",
+      "prompt": "What is the remainder when 3 raised to the power 100 is divided by 13? End with a line 'Final answer: X'.",
+      "answer": "3",
+      "type": "number"
+    },
+    {
+      "id": "reason-e10-markup-discount",
+      "difficulty": "expert",
+      "prompt": "A shopkeeper marks a product up 40% above its $50 cost, then sells it at a 30% discount off the marked price. What is the final selling price in dollars? End with a line 'Final answer: X'.",
+      "answer": "49",
+      "type": "number"
     }
   ]
 }
