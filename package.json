@@ -1,0 +1,219 @@
+{
+  "name": "luigi-codes",
+  "displayName": "Luigi Codes",
+  "description": "Premium local AI coding agent by Luigi Solutions. Private, powerful, yours.",
+  "version": "0.2.0",
+  "publisher": "LuigiSolutions",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "icon": "media/luigi-icon.png",
+  "galleryBanner": {
+    "color": "#0b0a09",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuigiSolutions/luigi-codes"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "coding",
+    "agent",
+    "local",
+    "private",
+    "llm",
+    "luigi"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "luigi-codes",
+          "title": "Luigi Codes",
+          "icon": "media/luigi-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "luigi-codes": [
+        {
+          "type": "webview",
+          "id": "luigi.sidebar",
+          "name": "Chat",
+          "contextualTitle": "Luigi Codes"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "luigi.openChat",
+        "title": "Luigi: Open Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "luigi.explainCode",
+        "title": "Luigi: Explain Selected Code"
+      },
+      {
+        "command": "luigi.improveCode",
+        "title": "Luigi: Improve Selected Code"
+      },
+      {
+        "command": "luigi.generateTests",
+        "title": "Luigi: Generate Tests"
+      },
+      {
+        "command": "luigi.fixBugs",
+        "title": "Luigi: Find & Fix Bugs"
+      },
+      {
+        "command": "luigi.reviewCode",
+        "title": "Luigi: Review Code"
+      },
+      {
+        "command": "luigi.terminalChat",
+        "title": "Luigi: Open Terminal Chat"
+      },
+      {
+        "command": "luigi.openWebApp",
+        "title": "Luigi: Open Web App (Desktop & Mobile)",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "luigi.showAgentStatus",
+        "title": "Luigi: Show Agent Status"
+      },
+      {
+        "command": "luigi.exportTrainingData",
+        "title": "Luigi: Export Training Data (fine-tune JSONL)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "luigi.explainCode",
+          "group": "luigi",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "luigi.improveCode",
+          "group": "luigi",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "luigi.generateTests",
+          "group": "luigi",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "luigi.fixBugs",
+          "group": "luigi",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Luigi Codes",
+      "properties": {
+        "luigi.model.provider": {
+          "type": "string",
+          "enum": [
+            "ollama",
+            "lmstudio",
+            "custom"
+          ],
+          "default": "ollama",
+          "description": "Local inference provider. Ollama and LM Studio expose compatible HTTP APIs on localhost."
+        },
+        "luigi.model.endpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Base URL of the local inference server."
+        },
+        "luigi.model.primaryModel": {
+          "type": "string",
+          "default": "deepseek-coder:6.7b",
+          "description": "Preferred model for coding tasks."
+        },
+        "luigi.model.fallbackModel": {
+          "type": "string",
+          "default": "codellama:13b",
+          "description": "Model used when the primary is unavailable."
+        },
+        "luigi.model.embeddingModel": {
+          "type": "string",
+          "default": "nomic-embed-text",
+          "description": "Model used for embeddings (codebase index + memory similarity)."
+        },
+        "luigi.agent.autoApprove": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip the plan-approval modal for read-only plans. Plans containing mutating tools (file writes, shell, tests) always ask for approval."
+        },
+        "luigi.agent.maxRetries": {
+          "type": "number",
+          "default": 3,
+          "description": "Self-correction attempts per failed agent step."
+        },
+        "luigi.memory.chromaEndpoint": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "ChromaDB server URL. Falls back to local JSON persistence when unreachable."
+        },
+        "luigi.web.port": {
+          "type": "number",
+          "default": 8091,
+          "description": "Port for the Luigi web app (Luigi: Open Web App)."
+        },
+        "luigi.web.allowLan": {
+          "type": "boolean",
+          "default": false,
+          "description": "Bind the web app to all interfaces so phones on your local network can open it. The URL's session token remains required; leave off to keep the web app this-machine-only."
+        },
+        "luigi.ui.theme": {
+          "type": "string",
+          "enum": [
+            "premium-dark",
+            "premium-black"
+          ],
+          "default": "premium-black",
+          "description": "premium-black uses the pure Luigi canvas; premium-dark lifts surfaces one step."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "web": "node ./out/web/standalone.js",
+    "audit:imports": "node scripts/audit-imports.mjs",
+    "audit:brand": "node scripts/audit-brand.mjs"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.9.2",
+    "mocha": "^11.7.6",
+    "typescript": "^5.3.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5",
+    "diff": "^8.0.3"
+  }
+}

@@ -1,0 +1,16 @@
+{"id": "brand-gold", "category": "conventions", "question": "What is the Luigi Solutions brand gold hex?", "expect": ["#c9a86a"], "forbid": ["#FFD700"]}
+{"id": "palette", "category": "conventions", "question": "List the core Luigi Solutions palette.", "expect": ["#0b0a09", "#c9a86a", "#e8796e", "#a3c585"], "forbid": []}
+{"id": "border-tiers", "category": "conventions", "question": "Explain the two-tier border rule.", "expect": ["32%", "gold", "focus"], "forbid": []}
+{"id": "runtime-deps", "category": "conventions", "question": "Can I add a runtime npm dependency to luigi-codes?", "expect": ["No", "devDependencies"], "forbid": []}
+{"id": "identity", "category": "identity", "question": "Who are you?", "expect": ["Luigi", "local", "machine"], "forbid": ["OpenAI", "Anthropic", "Alibaba"]}
+{"id": "privacy", "category": "identity", "question": "Do you send my code anywhere?", "expect": ["No", "local"], "forbid": ["cloud service", "our servers"]}
+{"id": "agent-loop", "category": "architecture", "question": "Describe the 5-phase agent loop in luigi-codes.", "expect": ["context", "plan", "approve", "execute", "verify"], "forbid": []}
+{"id": "tools", "category": "architecture", "question": "What tools does the luigi-codes agent have?", "expect": ["readFile", "writeFile", "executeShell", "resolveSafe"], "forbid": []}
+{"id": "gates", "category": "architecture", "question": "What checks must pass before shipping a change to luigi-codes?", "expect": ["compile", "test", "audit"], "forbid": []}
+{"id": "path-guard", "category": "code", "question": "Write a workspace path guard for a VS Code extension tool.", "expect": ["path.resolve", "startsWith", "throw"], "forbid": []}
+{"id": "replace-safe", "category": "code", "question": "How do I safely replace text in a file when the replacement comes from a model?", "expect": ["replacer", "function", "$&"], "forbid": []}
+{"id": "describe-helper", "category": "code", "question": "Write the standard luigi-codes error-description helper.", "expect": ["instanceof Error", "error.message", "String(error)"], "forbid": []}
+{"id": "gen-reverse", "category": "general", "question": "Write a TypeScript function that reverses a string.", "expect": ["function", "split", "reverse", "join"], "forbid": []}
+{"id": "gen-debounce", "category": "general", "question": "Write a debounce function in TypeScript.", "expect": ["setTimeout", "clearTimeout"], "forbid": []}
+{"id": "gen-fizzbuzz", "category": "general", "question": "Write FizzBuzz in Python.", "expect": ["range", "15", "Fizz", "Buzz"], "forbid": []}
+{"id": "gen-sql", "category": "general", "question": "Write a SQL query to find the top 5 customers by total order value.", "expect": ["SELECT", "GROUP BY", "ORDER BY", "LIMIT"], "forbid": []}

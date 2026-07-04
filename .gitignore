@@ -1,0 +1,12 @@
+# Build output & caches
+out/
+node_modules/
+.vscode-test/
+*.vsix
+
+# Session-local files — machine-specific handoff notes stay off GitHub
+HANDOFF.md
+.claude/
+
+# OS noise
+.DS_Store

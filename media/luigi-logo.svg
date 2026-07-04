@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 44" width="360" height="44" role="img" aria-label="Luigi Codes">
+  <!--
+    LUIGI CODES wordmark — Luigi Solutions.
+    Serif letterforms (Newsreader stack from luigi-os), wordmark tracking
+    0.3em, gold gradient fill, thin angle-bracket motif for the code identity.
+  -->
+  <defs>
+    <linearGradient id="wordgold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dcc18d"/>
+      <stop offset="0.55" stop-color="#c9a86a"/>
+      <stop offset="1" stop-color="#a8874d"/>
+    </linearGradient>
+  </defs>
+  <!-- left bracket ⟨ -->
+  <path d="M 24 8 L 10 22 L 24 36" fill="none" stroke="url(#wordgold)" stroke-width="2" stroke-linecap="butt"/>
+  <!-- right bracket ⟩ -->
+  <path d="M 336 8 L 350 22 L 336 36" fill="none" stroke="url(#wordgold)" stroke-width="2" stroke-linecap="butt"/>
+  <text x="181" y="29"
+        text-anchor="middle"
+        font-family="Newsreader, ui-serif, Georgia, Cambria, 'Times New Roman', serif"
+        font-size="21"
+        font-weight="400"
+        letter-spacing="6.3"
+        fill="url(#wordgold)">LUIGI CODES</text>
+</svg>

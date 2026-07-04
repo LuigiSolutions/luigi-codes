@@ -1,0 +1,21 @@
+# Ship only what the extension needs at runtime: out/ (minus tests), media/,
+# package.json, README, LICENSE-ish docs. Everything else stays out of the vsix.
+.vscode/**
+.vscode-test/**
+src/**
+out/test/**
+out/**/*.map
+out/**/*.d.ts
+scripts/**
+eval/**
+node_modules/**
+tsconfig.json
+.vscodeignore
+.claude/**
+CLAUDE.md
+KNOWN_ISSUES.md
+TRAINING.md
+HANDOFF.md
+PUBLISHING.md
+*.vsix
+**/.DS_Store
