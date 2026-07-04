@@ -250,9 +250,8 @@
   <div class="wrap">
     <a class="wordmark" href="#"><span class="shroom">🍄</span>LUIGI CODES</a>
     <nav>
-      <a href="#capabilities" class="hide-sm">Features</a>
-      <a href="#install" class="hide-sm">Install</a>
-      <a href="https://github.com/LuigiSolutions/luigi-codes">GitHub</a>
+      <a href="#capabilities">Features</a>
+      <a href="#install">Install</a>
     </nav>
   </div>
 </header>
@@ -267,7 +266,6 @@
     No API keys. No per-token bills. No code leaving your machine.</p>
     <div class="cta-row reveal d4">
       <a class="btn btn-gold" href="#install">Install</a>
-      <a class="btn btn-ghost" href="https://github.com/LuigiSolutions/luigi-codes">View Source</a>
     </div>
     <div class="truths reveal d4">
       <span><b>$0</b> per token, forever</span>
@@ -362,24 +360,9 @@
         </form>
       </div>
 
-      <div class="steps" id="steps" hidden>
-        <div class="step">
-          <span class="n">01 · Get a local model</span>
-<pre><code>ollama pull qwen2.5-coder:7b       <span class="c"># strong small coder</span>
-ollama pull nomic-embed-text       <span class="c"># embeddings for index + memory</span></code></pre>
-        </div>
-        <div class="step">
-          <span class="n">02 · Install the extension</span>
-          <p>VS Code Marketplace listing is on its way. Today, build from source. It takes about a minute:</p>
-<pre><code>git clone https://github.com/LuigiSolutions/luigi-codes
-cd luigi-codes &amp;&amp; npm install &amp;&amp; npm run compile
-npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</code></pre>
-        </div>
-        <div class="step">
-          <span class="n">03 · Meet Luigi</span>
-          <p>Click the 🍄 in the activity bar. For your phone: run <em>“Luigi: Open Web App (Desktop &amp; Mobile)”</em> from the command palette.</p>
-        </div>
-      </div>
+      <!-- Filled by the server after signup. The setup steps are not shipped
+           in this page at all, so there is nothing to find in view-source. -->
+      <div class="steps" id="steps" hidden></div>
     </div>
   </section>
 </main>
@@ -387,17 +370,12 @@ npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</cod
 <footer>
   <div class="wrap">
     <span>© 2026 Luigi Solutions · Built to be owned.</span>
-    <span>
-      <a href="https://github.com/LuigiSolutions/luigi-codes">GitHub</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/LuigiSolutions/luigi-codes#readme">Docs</a>
-    </span>
   </div>
 </footer>
 
 <script>
   (function () {
-    var KEY = 'luigi-welcomed';
+    var KEY = 'luigi-steps-v1';
     var gate = document.getElementById('gate');
     var steps = document.getElementById('steps');
     var form = document.getElementById('leadForm');
@@ -406,14 +384,17 @@ npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</cod
     var submit = document.getElementById('leadSubmit');
     var errorEl = document.getElementById('gateError');
 
-    function open() {
+    function open(instructions) {
+      if (instructions) { steps.innerHTML = instructions; }
+      if (!steps.innerHTML) { return; } // nothing to show without the server's steps
       gate.hidden = true;
       steps.hidden = false;
     }
 
-    // Returning visitors go straight to the instructions.
+    // Returning visitors go straight to the instructions they already unlocked.
     try {
-      if (localStorage.getItem(KEY)) { open(); }
+      var saved = localStorage.getItem(KEY);
+      if (saved) { open(saved); }
     } catch (e) { /* storage blocked: the gate simply shows */ }
 
     form.addEventListener('submit', function (e) {
@@ -437,9 +418,12 @@ npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</cod
         })
       }).then(function (r) {
         if (!r.ok) { throw new Error('HTTP ' + r.status); }
-        try { localStorage.setItem(KEY, '1'); } catch (e) { /* fine */ }
-        open();
-        document.getElementById('steps').scrollIntoView({ behavior: 'smooth' });
+        return r.json();
+      }).then(function (payload) {
+        if (!payload.instructions) { throw new Error('no instructions'); }
+        try { localStorage.setItem(KEY, payload.instructions); } catch (e) { /* fine */ }
+        open(payload.instructions);
+        steps.scrollIntoView({ behavior: 'smooth' });
       }).catch(function () {
         submit.disabled = false;
         submit.textContent = 'Install Luigi Codes';
