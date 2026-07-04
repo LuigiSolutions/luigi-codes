@@ -100,10 +100,24 @@ async function callModel(messages, temperature = CONFIG.temperature) {
       ? data?.message?.content
       : data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string') throw new Error('Model response had no message content.');
-    return content;
+    return stripStopMarkers(content);
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Some raw servers (mlx-lm observed on :8080) leak chat-template stop markers as
+// literal text at the end of a reply. The product strips these (streamText.ts,
+// splitAtStopMarker, test T23); the harness talks to the server directly, so it
+// must strip them too or a correct answer like "wednesday<|im_end|>" scores as wrong.
+const STOP_MARKERS = ['<|im_end|>', '<|endoftext|>', '<|eot_id|>', '<|eom_id|>', '<|end|>', '</s>'];
+function stripStopMarkers(text) {
+  let out = text;
+  for (const marker of STOP_MARKERS) {
+    const i = out.indexOf(marker);
+    if (i !== -1) out = out.slice(0, i);
+  }
+  return out.trim();
 }
 
 async function assertServerReachable() {
@@ -354,9 +368,41 @@ function writeReport(runs) {
   return { jsonPath, mdPath, summaries };
 }
 
+// --- self-test (no model server needed) --------------------------------------
+
+function runSelftest() {
+  const checks = [];
+  const check = (name, cond) => checks.push([name, Boolean(cond)]);
+
+  // Regression: stop-marker stripping (the scorer bug that masked correct answers).
+  check('strip im_end', stripStopMarkers('wednesday<|im_end|>') === 'wednesday');
+  check('strip endoftext + trailing junk', stripStopMarkers('42<|endoftext|>\nnoise') === '42');
+  check('no marker untouched', stripStopMarkers('hello world') === 'hello world');
+
+  // Answer matching across formats.
+  check('number exact', answerMatches('Final answer: 7', { type: 'number', answer: '7' }));
+  check('number decimal', answerMatches('7.5 degrees', { type: 'number', answer: '7.5' }));
+  check('number rejects wrong', !answerMatches('8', { type: 'number', answer: '7' }));
+  check('text fraction latex folds', answerMatches('\\(\\frac{1}{6}\\)', { type: 'text', answer: '1/6' }));
+  check('text word', answerMatches('Wednesday', { type: 'text', answer: 'wednesday' }));
+
+  // Vote keys collapse equivalent answers so self-consistency tallies correctly.
+  check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');
+  check('vote key text frac', answerKey('\\frac{1}{6}', { type: 'text', answer: '1/6' }) === '1/6');
+
+  let failed = 0;
+  for (const [name, ok] of checks) {
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}`);
+    if (!ok) failed++;
+  }
+  console.log(`\nself-test: ${checks.length - failed}/${checks.length} passed`);
+  return failed === 0;
+}
+
 // --- main --------------------------------------------------------------------
 
 async function main() {
+  if (args.selftest) { process.exit(runSelftest() ? 0 : 1); }
   console.log('Luigi Codes eval harness');
   console.log(`  model=${CONFIG.model} endpoint=${CONFIG.endpoint} provider=${CONFIG.provider}`);
   console.log(`  strategy=${CONFIG.strategy}${CONFIG.strategy === 'self-consistency' ? ` samples=${CONFIG.samples} sc-temp=${SC_TEMPERATURE}` : ` temp=${CONFIG.temperature}`} difficulty=${CONFIG.difficulty}`);
