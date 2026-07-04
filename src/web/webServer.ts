@@ -40,10 +40,24 @@ export interface WebServerConfig {
   wire: WireFormat;
   /** Preferred model id. Empty → first model the server reports. */
   model?: string;
+  /**
+   * When true (the default), the configured endpoint is only the first
+   * candidate: if it has no models, the well-known local servers are probed
+   * too (Ollama :11434, LM Studio :1234, mlx-lm/llama.cpp :8080) and the
+   * first one that answers wins. Chat then Just Works regardless of which
+   * local stack the user runs. Tests pass false for determinism.
+   */
+  autoDetectModelServer?: boolean;
   theme?: LuigiTheme;
   /** Directory holding luigi-logo.svg / luigi-icon.svg to inline. Optional. */
   mediaDir?: string;
   log?: Logger;
+}
+
+/** A concrete inference server candidate. */
+interface Backend {
+  endpoint: string;
+  wire: WireFormat;
 }
 
 interface WireMessage {
@@ -56,6 +70,13 @@ const MAX_MESSAGES = 200;
 
 /** The public site allowed to poll /api/status (the Get Luigi Codes launcher). */
 const SITE_ORIGIN = 'https://luigi-codes.vercel.app';
+
+/** The local inference servers people actually run, probed in this order. */
+const WELL_KNOWN_BACKENDS: Backend[] = [
+  { endpoint: 'http://localhost:11434', wire: 'ollama' }, // Ollama
+  { endpoint: 'http://localhost:1234', wire: 'openai' }, // LM Studio
+  { endpoint: 'http://localhost:8080', wire: 'openai' }, // mlx-lm, llama.cpp
+];
 
 const SYSTEM_PROMPT =
   'You are Luigi, an expert software engineer built by Luigi Solutions, running fully on the local machine. ' +
@@ -213,10 +234,11 @@ export class LuigiWebServer {
   // ── API: status ────────────────────────────────────────────────────────────
 
   private async handleStatus(res: http.ServerResponse): Promise<void> {
-    const models = await this.listModels();
+    const { backend, models } = await this.detectBackend();
+    const shown = backend ?? this.configuredBackend();
     const body = {
-      endpoint: this.config.modelEndpoint,
-      wire: this.config.wire,
+      endpoint: shown.endpoint,
+      wire: shown.wire,
       model: this.resolveModel(models),
       reachable: models.length > 0,
       models,
@@ -225,18 +247,64 @@ export class LuigiWebServer {
     res.end(JSON.stringify(body));
   }
 
-  private async listModels(): Promise<string[]> {
-    const endpoint = this.config.modelEndpoint.replace(/\/$/, '');
+  // ── Model-server discovery ─────────────────────────────────────────────────
+
+  /** The last backend that actually answered; probed first next time. */
+  private active: Backend | undefined;
+
+  private configuredBackend(): Backend {
+    return { endpoint: this.config.modelEndpoint.replace(/\/$/, ''), wire: this.config.wire };
+  }
+
+  private candidates(): Backend[] {
+    const list: Backend[] = [this.configuredBackend()];
+    if (this.config.autoDetectModelServer !== false) {
+      for (const candidate of WELL_KNOWN_BACKENDS) {
+        if (!list.some((backend) => backend.endpoint === candidate.endpoint)) {
+          list.push(candidate);
+        }
+      }
+    }
+    return list;
+  }
+
+  /**
+   * Find a live inference server: sticky backend first, then the configured
+   * endpoint, then the well-known local servers. Dead candidates refuse the
+   * TCP connection in milliseconds, so a full miss is still fast.
+   */
+  private async detectBackend(): Promise<{ backend: Backend | undefined; models: string[] }> {
+    const rest = this.candidates().filter((c) => c.endpoint !== this.active?.endpoint);
+    const ordered = this.active ? [this.active, ...rest] : rest;
+    for (const candidate of ordered) {
+      const models = await this.probe(candidate);
+      if (models.length > 0) {
+        if (this.active?.endpoint !== candidate.endpoint) {
+          this.log(`Model server found at ${candidate.endpoint} (${candidate.wire} wire).`);
+        }
+        this.active = candidate;
+        return { backend: candidate, models };
+      }
+    }
+    this.active = undefined;
+    return { backend: undefined, models: [] };
+  }
+
+  private async probe(backend: Backend): Promise<string[]> {
     try {
-      if (this.config.wire === 'ollama') {
-        const response = await fetch(`${endpoint}/api/tags`, { signal: AbortSignal.timeout(3000) });
+      if (backend.wire === 'ollama') {
+        const response = await fetch(`${backend.endpoint}/api/tags`, {
+          signal: AbortSignal.timeout(3000),
+        });
         if (!response.ok) {
           return [];
         }
         const data = (await response.json()) as { models?: { name: string }[] };
         return (data.models ?? []).map((m) => m.name);
       }
-      const response = await fetch(`${endpoint}/v1/models`, { signal: AbortSignal.timeout(3000) });
+      const response = await fetch(`${backend.endpoint}/v1/models`, {
+        signal: AbortSignal.timeout(3000),
+      });
       if (!response.ok) {
         return [];
       }
@@ -290,15 +358,19 @@ export class LuigiWebServer {
     const abort = new AbortController();
     res.on('close', () => abort.abort());
 
-    const model = this.resolveModel(await this.listModels());
-    if (!model) {
-      send({ error: `no model available at ${this.config.modelEndpoint}. Is the model server running?` });
+    const { backend, models } = await this.detectBackend();
+    const model = this.resolveModel(models);
+    if (!backend || !model) {
+      send({
+        error:
+          'no local model server found. Start Ollama, LM Studio, or your custom server, then send again; Luigi reconnects automatically.',
+      });
       res.end();
       return;
     }
     send({ model });
     try {
-      await this.streamFromModel(model, messages, (token) => send({ token }), abort.signal);
+      await this.streamFromModel(backend, model, messages, (token) => send({ token }), abort.signal);
       send({ done: true });
     } catch (error) {
       if (!abort.signal.aborted) {
@@ -309,13 +381,14 @@ export class LuigiWebServer {
   }
 
   private async streamFromModel(
+    backend: Backend,
     model: string,
     messages: WireMessage[],
     onToken: (token: string) => void,
     signal: AbortSignal
   ): Promise<void> {
-    const endpoint = this.config.modelEndpoint.replace(/\/$/, '');
-    if (this.config.wire === 'ollama') {
+    const endpoint = backend.endpoint;
+    if (backend.wire === 'ollama') {
       const response = await fetch(`${endpoint}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1025,8 +1098,7 @@ export class LuigiWebServer {
         addNote('Stopped.', true);
         announce('Stopped.');
       } else if (error) {
-        addNote('Luigi could not reach the local model: ' + error.message +
-          '. Is the model server running on this machine?', false);
+        addNote('Luigi could not reach the local model: ' + error.message, false);
         announce('Error: ' + error.message);
         refreshStatus();
       } else {

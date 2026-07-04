@@ -539,6 +539,9 @@ suite('Luigi Codes', () => {
       port: 0,
       modelEndpoint: 'http://127.0.0.1:9',
       wire: 'openai',
+      // Deterministic: a dev machine may have a real Ollama/mlx server running,
+      // and these tests must behave identically with and without one.
+      autoDetectModelServer: false,
       log: noop,
     });
     const { port } = await server.start();

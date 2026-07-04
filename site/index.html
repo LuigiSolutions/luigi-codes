@@ -512,6 +512,19 @@
       launcherTimers.forEach(clearInterval);
       launcherTimers = [];
 
+      // Put the setup command straight onto the clipboard so the visitor's
+      // whole job is: open Terminal, paste, Return. Falls back to the Copy
+      // button when the browser withholds clipboard access.
+      var cmdEl = document.getElementById('getCmd');
+      var copyNote = document.getElementById('copyNote');
+      if (cmdEl && navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(cmdEl.textContent).then(function () {
+          if (copyNote) {
+            copyNote.textContent = 'The setup command is already on your clipboard. Open Terminal (press Cmd+Space and type Terminal), paste, and press Return.';
+          }
+        }, function () { /* keep the default copy instruction */ });
+      }
+
       var msgEl = document.getElementById('loaderMsg');
       var statusEl = document.getElementById('launchStatus');
       var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

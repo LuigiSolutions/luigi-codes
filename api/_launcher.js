@@ -17,8 +17,10 @@ const LAUNCHER_HTML = `
           </div>
           <p id="launchStatus" class="launch-status">Looking for Luigi Codes on this machine...</p>
           <div class="setup-how">
-            <p>New machine? Paste this one command in Terminal. It does the whole setup, then this page opens the app for you:</p>
+            <p id="copyNote">New machine? Copy the command below, open Terminal (press Cmd+Space and type Terminal), paste, and press Return.</p>
 <pre class="cmd"><code id="getCmd">curl -fsSL https://luigi-codes.vercel.app/get | bash</code><button class="copy-cmd" type="button">Copy</button></pre>
+            <p class="fine">That one command does everything: builds Luigi, installs the VS Code extension,
+            finds or fetches a model, and starts the web app. This page opens it the moment it's ready.</p>
             <p class="fine">Already installed? Start Luigi anytime: run "Luigi: Open Web App" in VS Code,
             or <code>cd ~/luigi-codes &amp;&amp; npm run web</code> in Terminal. The moment it's up, you're in.</p>
           </div>
