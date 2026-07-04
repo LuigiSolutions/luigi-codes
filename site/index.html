@@ -124,12 +124,24 @@
   .btn-ghost:hover { box-shadow: var(--glow); color: var(--gold-light); border-color: var(--gold-light); }
 
   .truths {
-    display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
-    margin-top: 56px; padding-top: 32px;
-    border-top: 1px solid var(--hairline);
-    color: var(--ink-muted); font-size: 42px; line-height: 1.2;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-top: 56px;
   }
-  .truths span b { color: var(--gold); font-weight: 500; }
+  .truth {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 28px 16px 24px;
+    text-align: center;
+  }
+  .truth .val { color: var(--gold); font-size: 42px; line-height: 1.1; font-weight: 500; }
+  .truth .label {
+    color: var(--ink-muted);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
 
   /* ── Sections ── */
   section { padding: 72px 0; border-top: 1px solid var(--hairline); }
@@ -239,8 +251,8 @@
   @media (max-width: 640px) {
     .hero { padding: 64px 0 48px; }
     section { padding: 56px 0; }
-    nav a.hide-sm { display: none; }
-    .truths { gap: 16px; flex-direction: column; align-items: center; }
+    .truths { grid-template-columns: repeat(2, 1fr); }
+    .truth .val { font-size: 32px; }
   }
 </style>
 </head>
@@ -268,10 +280,10 @@
       <a class="btn btn-gold" href="#install">Install</a>
     </div>
     <div class="truths reveal d4">
-      <span><b>$0</b> per token, forever</span>
-      <span><b>0</b> runtime dependencies</span>
-      <span><b>100%</b> on-machine</span>
-      <span><b>23/23</b> integration tests</span>
+      <div class="truth"><div class="val">$0</div><div class="label">per token, forever</div></div>
+      <div class="truth"><div class="val">0</div><div class="label">runtime dependencies</div></div>
+      <div class="truth"><div class="val">100%</div><div class="label">on-machine</div></div>
+      <div class="truth"><div class="val">23/23</div><div class="label">integration tests</div></div>
     </div>
   </div>
 
