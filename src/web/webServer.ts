@@ -21,6 +21,7 @@ import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { escapeHtml, renderInline, renderMarkdown } from '../chat/markdown';
+import { GitHubClient, validRepoName } from '../github/githubClient';
 import { ndjsonLines, parseSseChunk, splitAtStopMarker } from '../inference/streamText';
 import { cssVariables, LuigiBrand, LuigiTheme } from '../ui/designTokens';
 
@@ -191,8 +192,139 @@ export class LuigiWebServer {
       await this.handleChat(req, res);
       return;
     }
+    if (url.pathname.startsWith('/api/github/')) {
+      await this.handleGitHub(req, res, url);
+      return;
+    }
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('not found');
+  }
+
+  // ── API: GitHub connector ──────────────────────────────────────────────────
+  // The browser holds the user's GitHub token (its localStorage) and sends it
+  // per request; this server forwards it to api.github.com and never stores it.
+
+  private async handleGitHub(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    url: URL
+  ): Promise<void> {
+    const header = req.headers['x-github-token'];
+    const githubToken = typeof header === 'string' ? header.trim() : '';
+    if (githubToken.length === 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'connect GitHub first (missing x-github-token)' }));
+      return;
+    }
+    const client = new GitHubClient(async () => githubToken);
+    const json = (status: number, body: unknown): void => {
+      res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(body));
+    };
+    try {
+      if (req.method === 'GET' && url.pathname === '/api/github/repos') {
+        const login = await client.viewer();
+        json(200, { login, repos: await client.listRepos() });
+        return;
+      }
+      if (req.method === 'POST' && url.pathname === '/api/github/review') {
+        const body = JSON.parse(await readBody(req)) as { repo?: string };
+        const repo = String(body.repo ?? '');
+        if (!validRepoName(repo)) {
+          json(400, { error: 'repo must be owner/name' });
+          return;
+        }
+        await this.streamRepoReview(client, repo, req, res);
+        return;
+      }
+      if (req.method === 'POST' && url.pathname === '/api/github/commit') {
+        const body = JSON.parse(await readBody(req)) as Record<string, string>;
+        const repo = String(body.repo ?? '');
+        if (
+          !validRepoName(repo) ||
+          !body.branch ||
+          !body.path ||
+          body.content === undefined ||
+          !body.message
+        ) {
+          json(400, { error: 'repo, branch, path, content, and message are required' });
+          return;
+        }
+        const commitUrl = await client.commitFile(
+          repo,
+          body.branch,
+          body.path,
+          body.content,
+          body.message
+        );
+        this.log(`GitHub: committed ${body.path} to ${repo}@${body.branch} (web).`);
+        json(200, { ok: true, url: commitUrl });
+        return;
+      }
+      json(404, { error: 'not found' });
+    } catch (error) {
+      json(502, { error: describe(error) });
+    }
+  }
+
+  /** Pull a repo's most informative files and stream a code review over SSE. */
+  private async streamRepoReview(
+    client: GitHubClient,
+    repo: string,
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): Promise<void> {
+    const files = await client.listFiles(repo);
+    const picked = pickReviewFiles(files.map((f) => f.path));
+    let bundle = '';
+    for (const filePath of picked) {
+      if (bundle.length > 60_000) {
+        break;
+      }
+      try {
+        const content = await client.readFile(repo, filePath);
+        bundle += `\n===== ${filePath} =====\n${content.slice(0, 8000)}\n`;
+      } catch {
+        // unreadable file (binary, too large): skip, the review continues
+      }
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-store',
+      Connection: 'keep-alive',
+    });
+    const send = (payload: Record<string, unknown>): void => {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+    const abort = new AbortController();
+    res.on('close', () => abort.abort());
+
+    const { backend, models } = await this.detectBackend();
+    const model = this.resolveModel(models);
+    if (!backend || !model) {
+      send({ error: 'no local model server found. Start one, then try the review again.' });
+      res.end();
+      return;
+    }
+    send({ model });
+    const messages: WireMessage[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content:
+          `Review the GitHub repository ${repo}. Report correctness bugs first, then design and clarity issues, each with file references and a concrete suggested fix. End with the three highest-impact improvements. Reviewed files follow.\n${bundle}`,
+      },
+    ];
+    try {
+      await this.streamFromModel(backend, model, messages, (token) => send({ token }), abort.signal);
+      send({ done: true });
+    } catch (error) {
+      if (!abort.signal.aborted) {
+        send({ error: describe(error) });
+      }
+    }
+    res.end();
   }
 
   /**
@@ -614,6 +746,41 @@ export class LuigiWebServer {
     outline-offset: 2px;
   }
 
+  /* ── GitHub panel ───────────────────────────────────────────────────── */
+  #ghPanel {
+    flex: none;
+    border-bottom: 1px solid var(--luigi-border-subtle);
+    background: var(--luigi-bg-secondary);
+    padding: 12px 16px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .gh-row { display: flex; align-items: center; gap: 8px; }
+  #ghToken {
+    flex: 1;
+    background: var(--luigi-bg);
+    border: 1px solid var(--luigi-border-subtle);
+    border-radius: var(--luigi-radius-sm);
+    color: var(--luigi-ink);
+    font-family: var(--luigi-font-mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  #ghToken:focus { border-color: var(--luigi-border-accent); }
+  .gh-hint { color: var(--luigi-ink-muted); font-size: 11px; margin-top: 8px; min-width: 0; }
+  #ghUser { margin-top: 0; flex: 1; }
+  #ghList { margin-top: 8px; }
+  .gh-repo {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 4px;
+    border-top: 1px solid var(--luigi-border-subtle);
+    font-size: 12px;
+    color: var(--luigi-ink);
+  }
+  .gh-repo .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .gh-repo .meta { color: var(--luigi-ink-muted); font-size: 11px; }
+
   /* ── Conversation ───────────────────────────────────────────────────── */
   main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 16px 8px; -webkit-overflow-scrolling: touch; }
   main::-webkit-scrollbar { width: 8px; }
@@ -833,9 +1000,28 @@ export class LuigiWebServer {
     ${logoHtml}
     <div class="right">
       <span class="badge" id="modelBadge">checking model…</span>
+      <button class="ghost-btn" id="ghBtn" title="Connect GitHub to review and improve your repos">GitHub</button>
       <button class="ghost-btn" id="newChat" title="Start a fresh conversation">New</button>
     </div>
   </header>
+
+  <div id="ghPanel" hidden>
+    <div id="ghConnect">
+      <div class="gh-row">
+        <input id="ghToken" type="password" autocomplete="off" placeholder="GitHub token (fine-grained, contents read/write)">
+        <button class="ghost-btn" id="ghSave">Connect</button>
+      </div>
+      <p class="gh-hint">Create a token at github.com &gt; Settings &gt; Developer settings &gt; Fine-grained tokens.
+      It stays in this browser and is sent only to your own machine and GitHub.</p>
+    </div>
+    <div id="ghRepos" hidden>
+      <div class="gh-row">
+        <span class="gh-hint" id="ghUser"></span>
+        <button class="ghost-btn" id="ghForget">Disconnect</button>
+      </div>
+      <div id="ghList"></div>
+    </div>
+  </div>
 
   <div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
 
@@ -1110,6 +1296,149 @@ export class LuigiWebServer {
     }
   }
 
+  // ── GitHub connector ──
+  (function () {
+    var GH_KEY = 'luigi-github-token';
+    var panel = document.getElementById('ghPanel');
+    var connectBox = document.getElementById('ghConnect');
+    var reposBox = document.getElementById('ghRepos');
+    var listEl = document.getElementById('ghList');
+    var userEl = document.getElementById('ghUser');
+    var tokenInput = document.getElementById('ghToken');
+
+    function ghToken() {
+      try { return localStorage.getItem(GH_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    function loadRepos() {
+      connectBox.hidden = true;
+      reposBox.hidden = false;
+      userEl.textContent = 'Loading your repositories…';
+      fetch('/api/github/repos', { headers: { 'x-github-token': ghToken() } })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (result) {
+          if (!result.ok) { throw new Error(result.d.error || 'could not reach GitHub'); }
+          userEl.textContent = 'Connected as ' + result.d.login + ' · pick a repo to review';
+          listEl.innerHTML = '';
+          result.d.repos.forEach(function (repo) {
+            var row = document.createElement('div');
+            row.className = 'gh-repo';
+            var name = document.createElement('span');
+            name.className = 'name';
+            name.textContent = repo.fullName + (repo.private ? ' · private' : '');
+            var review = document.createElement('button');
+            review.className = 'ghost-btn';
+            review.textContent = 'Review';
+            review.addEventListener('click', function () {
+              panel.hidden = true;
+              reviewRepo(repo.fullName);
+            });
+            row.appendChild(name);
+            row.appendChild(review);
+            listEl.appendChild(row);
+          });
+        })
+        .catch(function (error) {
+          userEl.textContent = 'GitHub error: ' + error.message;
+        });
+    }
+
+    document.getElementById('ghBtn').addEventListener('click', function () {
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) {
+        if (ghToken()) { loadRepos(); } else { connectBox.hidden = false; reposBox.hidden = true; }
+      }
+    });
+    document.getElementById('ghSave').addEventListener('click', function () {
+      var value = tokenInput.value.trim();
+      if (!value) { return; }
+      try { localStorage.setItem(GH_KEY, value); } catch (e) { /* fine */ }
+      tokenInput.value = '';
+      loadRepos();
+    });
+    document.getElementById('ghForget').addEventListener('click', function () {
+      try { localStorage.removeItem(GH_KEY); } catch (e) { /* fine */ }
+      connectBox.hidden = false;
+      reposBox.hidden = true;
+      listEl.innerHTML = '';
+    });
+
+    // Stream a whole-repo review into the conversation, like a chat reply.
+    function reviewRepo(fullName) {
+      hideWelcome();
+      var userBody = addMessage('user', 'You');
+      userBody.textContent = 'Review my GitHub repo ' + fullName;
+      setBusy(true);
+
+      var streamEl = null;
+      var streamNode = null;
+      var reply = '';
+      controller = new AbortController();
+      var thisController = controller;
+
+      fetch('/api/github/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-github-token': ghToken() },
+        body: JSON.stringify({ repo: fullName }),
+        signal: thisController.signal
+      }).then(function (response) {
+        if (!response.ok || !response.body) { throw new Error('HTTP ' + response.status); }
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function handleLine(line) {
+          if (line.indexOf('data:') !== 0) { return; }
+          var payload;
+          try { payload = JSON.parse(line.slice(5).trim()); } catch (e) { return; }
+          if (payload.model && !streamEl) {
+            streamEl = addMessage('assistant', '🍄 Luigi · ' + esc(payload.model) + ' · reviewing ' + esc(fullName));
+            streamEl.classList.add('streaming');
+            streamNode = document.createTextNode('');
+            streamEl.appendChild(streamNode);
+          } else if (payload.token) {
+            if (streamNode) { reply += payload.token; streamNode.appendData(payload.token); scrollDown(); }
+          } else if (payload.error) {
+            throw new Error(payload.error);
+          }
+        }
+        function pump() {
+          return reader.read().then(function (result) {
+            if (result.done) { return; }
+            buffer += decoder.decode(result.value, { stream: true });
+            var idx = buffer.indexOf('\\n');
+            while (idx >= 0) {
+              handleLine(buffer.slice(0, idx).trim());
+              buffer = buffer.slice(idx + 1);
+              idx = buffer.indexOf('\\n');
+            }
+            return pump();
+          });
+        }
+        return pump();
+      }).then(function () { finish(null); }).catch(function (error) { finish(error); });
+
+      function finish(error) {
+        if (thisController !== controller) { return; }
+        if (streamEl) {
+          streamEl.classList.remove('streaming');
+          if (reply.length > 0) {
+            streamEl.innerHTML = renderMarkdown(reply);
+            messages.push({ role: 'user', content: 'Review my GitHub repo ' + fullName });
+            messages.push({ role: 'assistant', content: reply });
+          }
+        }
+        if (error && !thisController.signal.aborted) {
+          addNote('GitHub review failed: ' + error.message, false);
+        } else if (thisController.signal.aborted) {
+          addNote('Stopped.', true);
+        }
+        controller = null;
+        setBusy(false);
+        scrollDown();
+      }
+    }
+  })();
+
   input.focus();
 </script>
 </body>
@@ -1154,6 +1483,23 @@ function sanitizeMessages(raw: unknown): WireMessage[] | undefined {
     }
   }
   return out;
+}
+
+/**
+ * Choose which repo files earn a place in the review bundle: docs and
+ * manifests first for orientation, then source files, skipping lockfiles,
+ * vendored trees, and binaries. Pure so tests can pin the heuristic.
+ */
+export function pickReviewFiles(paths: string[], cap = 14): string[] {
+  const skip = /(^|\/)(node_modules|dist|build|out|vendor|\.git)\/|package-lock|yarn\.lock|pnpm-lock|\.(png|jpg|jpeg|gif|ico|pdf|zip|woff2?|ttf|eot|mp4|svg|lock)$/i;
+  const source = /\.(ts|tsx|js|jsx|py|go|rs|rb|java|kt|swift|c|h|cpp|cs|php|sh|sql|html|css|json|yml|yaml|toml|md)$/i;
+  const orientation = /^(readme\.md|package\.json|pyproject\.toml|cargo\.toml|go\.mod|composer\.json)$/i;
+  const candidates = paths.filter((p) => !skip.test(p) && source.test(p));
+  const first = candidates.filter((p) => orientation.test(p.split('/').pop() ?? ''));
+  const rest = candidates
+    .filter((p) => !first.includes(p))
+    .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
+  return [...first, ...rest].slice(0, cap);
 }
 
 /** True when the TCP peer is this same machine. */

@@ -20,7 +20,8 @@ Luigi Codes is a VS Code extension that puts a full coding agent — chat, edito
 |---|---|
 | 💬 **Chat panel** | Streaming conversation in the full Luigi Solutions look — warm near-black canvas, gold hairline frames, editorial serif welcome |
 | 🤖 **Agent mode** | 5-phase loop: gather context → plan → **human approval modal** → execute tools with self-correction → verify honestly |
-| 🛠 **11 tools** | readFile, writeFile, editFile, deleteFile, executeShell, grep, gitDiff, gitLog, runTests, lspDiagnostics, lspReferences — all path-guarded to the workspace |
+| 🛠 **16 tools** | readFile, writeFile, editFile, deleteFile, executeShell, grep, gitDiff, gitLog, runTests, lspDiagnostics, lspReferences — all path-guarded to the workspace — plus 5 GitHub tools |
+| 🐙 **GitHub connector** | `Luigi: Connect GitHub` (VS Code's built-in GitHub sign-in) lets the agent list, read, and review your repos, commit to branches, and open pull requests — writes always behind the approval gate. The web app connects with a fine-grained token |
 | 🧭 **Model router** | Detects installed Ollama / LM Studio models, scores them per task (capability × quality × speed × observed performance), routes every call |
 | 🗺 **Codebase index** | Symbols, imports, conventions, and framework detection across the workspace; semantic retrieval via local embeddings with a lexical fallback |
 | 🧠 **Memory** | Every agent run stored in ChromaDB (when running) plus a local JSON mirror; similar past tasks inform new plans |
@@ -75,7 +76,7 @@ inference endpoint. Nothing leaves your machine (or, with `--lan`, your network)
 All of these pass with **no model server running** — that is the contract.
 
 ```bash
-npm test                 # integration suite (T1–T23) in a real downloaded VS Code:
+npm test                 # integration suite (T1–T25) in a real downloaded VS Code:
                          # activation, commands, webview CSP/nonce, tool registry,
                          # router fallback, plan parsing, brand-token emission
 npm run audit:imports    # every import resolves; zero circular dependencies
@@ -98,6 +99,7 @@ Open the Luigi icon in the activity bar, or run **`Luigi: Open Chat`** from the 
 | `Luigi: Review Code` | Whole active file review |
 | `Luigi: Open Terminal Chat` | REPL chat in a terminal |
 | `Luigi: Open Web App (Desktop & Mobile)` | Start/manage the local web chat server; open in browser or copy the phone URL |
+| `Luigi: Connect GitHub` | Sign in with GitHub so Luigi can review repos and push approved updates |
 | `Luigi: Show Agent Status` | Models, index, memory, improvement, tools |
 | `Luigi: Export Training Data` | Dump collected data as fine-tune JSONL (train/valid) — see [TRAINING.md](TRAINING.md) |
 
@@ -121,12 +123,14 @@ Open the Luigi icon in the activity bar, or run **`Luigi: Open Chat`** from the 
 
 ```
 src/
-├── extension.ts              activation, 10 commands, status bar, terminal chat
+├── extension.ts              activation, 11 commands, status bar, terminal chat
 ├── ui/designTokens.ts        Luigi Solutions brand tokens (single source of truth)
 ├── chat/chatPanel.ts         chat webview + activity-bar sidebar
 ├── chat/markdown.ts          the one markdown renderer (panel, web app, tests)
 ├── inference/modelRouter.ts  model registry · detection · routing · streaming
 ├── inference/streamText.ts   NDJSON/SSE stream parsing + stop-marker guard (vscode-free)
+├── github/githubClient.ts    zero-dep GitHub REST client (vscode-free, both surfaces)
+├── github/githubTools.ts     the agent's GitHub tools (writes behind approval)
 ├── web/webServer.ts          zero-dep HTTP server: responsive chat for desktop & mobile
 ├── web/standalone.ts         `npm run web` — the web chat without VS Code
 ├── agent/
@@ -135,7 +139,7 @@ src/
 ├── context/codebaseIndex.ts  symbols, imports, patterns, semantic retrieval
 ├── memory/memorySystem.ts    ChromaDB + local JSON task memory
 ├── improvement/selfImprove.ts failure taxonomy → prompt rules → fine-tune readiness
-└── test/                     @vscode/test-electron + mocha integration suite (T1–T23)
+└── test/                     @vscode/test-electron + mocha integration suite (T1–T25)
 scripts/
 ├── audit-imports.mjs         import resolution + circular-dependency audit
 └── audit-brand.mjs           palette compliance audit (src/, media/, package.json)

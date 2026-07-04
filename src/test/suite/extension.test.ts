@@ -1,5 +1,5 @@
 /**
- * Luigi Codes — integration suite (T1–T22).
+ * Luigi Codes — integration suite (T1–T25).
  *
  * Runs inside a real extension host with NO model server available: every
  * assertion here must hold on a cold machine.
@@ -18,9 +18,11 @@ import { escapeHtml, renderInline, renderMarkdown } from '../../chat/markdown';
 import { buildTrainingExamples, SelfImprovement } from '../../improvement/selfImprove';
 import { ModelProfile, ModelRouter, parseSseChunk, TaskKind } from '../../inference/modelRouter';
 import { splitAtStopMarker } from '../../inference/streamText';
+import { GitHubClient, validRepoName } from '../../github/githubClient';
+import { createGitHubTools } from '../../github/githubTools';
 import { MemorySystem } from '../../memory/memorySystem';
 import { cssVariables, LuigiBrand } from '../../ui/designTokens';
-import { LuigiWebServer } from '../../web/webServer';
+import { LuigiWebServer, pickReviewFiles } from '../../web/webServer';
 
 const noop = (): void => undefined;
 
@@ -35,6 +37,7 @@ const ALL_COMMANDS = [
   'luigi.reviewCode',
   'luigi.terminalChat',
   'luigi.openWebApp',
+  'luigi.connectGitHub',
   'luigi.showAgentStatus',
   'luigi.exportTrainingData',
 ];
@@ -126,7 +129,7 @@ suite('Luigi Codes', () => {
     assert.ok(extension?.isActive, 'Extension is not active after activate().');
   });
 
-  test('T2: all 10 luigi.* commands are registered', async () => {
+  test('T2: all 11 luigi.* commands are registered', async () => {
     const commands = await vscode.commands.getCommands(true);
     // VS Code auto-generates luigi.sidebar.* view-management commands from the
     // contributed webview view; only the extension's own commands count here.
@@ -675,6 +678,77 @@ suite('Luigi Codes', () => {
     } finally {
       await server.stop();
     }
+  });
+
+  test('T24: GitHub tools declare reads free and writes approval-gated, and demand a connection', async () => {
+    // Token provider returns nothing: the exact state before Connect GitHub.
+    const disconnected = new GitHubClient(async () => undefined);
+    const tools = createGitHubTools(disconnected, noop);
+
+    const expected: Record<string, boolean> = {
+      githubListRepos: false,
+      githubListFiles: false,
+      githubReadFile: false,
+      githubCommitFile: true,
+      githubOpenPullRequest: true,
+    };
+    assert.strictEqual(tools.length, Object.keys(expected).length);
+    for (const tool of tools) {
+      assert.strictEqual(
+        tool.requiresApproval,
+        expected[tool.name],
+        `${tool.name}.requiresApproval must be ${expected[tool.name]} (writes gate, reads flow).`
+      );
+      assert.ok(tool.description.trim().length > 0, `${tool.name} has an empty description.`);
+      for (const [param, description] of Object.entries(tool.parameters)) {
+        assert.ok(description.trim().length > 0, `${tool.name}.${param} has an empty description.`);
+      }
+    }
+
+    // Registry surfaces the "connect first" error instead of a network attempt.
+    const registry = new ToolRegistry(noop);
+    for (const tool of tools) {
+      registry.register(tool);
+    }
+    const result = await registry.execute('githubListRepos', {});
+    assert.strictEqual(result.ok, false);
+    assert.match(result.error ?? '', /Connect GitHub/i);
+
+    // Malformed repo names are refused before any request could be built.
+    const badRepo = await registry.execute('githubReadFile', { repo: 'not-a-repo', path: 'x' });
+    assert.strictEqual(badRepo.ok, false);
+    assert.ok(validRepoName('LuigiSolutions/luigi-codes'));
+    assert.ok(!validRepoName('owner/name/extra'));
+    assert.ok(!validRepoName('https://github.com/o/r'));
+  });
+
+  test('T25: web GitHub endpoints require a token, and the review picker skips junk', async () => {
+    const { server, base } = await startedWebServer();
+    try {
+      // Every /api/github route refuses to act without the browser's token.
+      const noToken = await fetch(`${base}/api/github/repos`);
+      assert.strictEqual(noToken.status, 400);
+      const body = (await noToken.json()) as { error: string };
+      assert.match(body.error, /connect GitHub/i);
+    } finally {
+      await server.stop();
+    }
+
+    // The review bundle: orientation files first, junk and binaries never.
+    const picked = pickReviewFiles([
+      'node_modules/lib/index.js',
+      'package-lock.json',
+      'logo.png',
+      'README.md',
+      'package.json',
+      'src/deep/nested/util.ts',
+      'src/main.ts',
+      'dist/bundle.js',
+    ]);
+    assert.deepStrictEqual(picked.slice(0, 2), ['README.md', 'package.json']);
+    assert.ok(picked.includes('src/main.ts'));
+    assert.ok(picked.indexOf('src/main.ts') < picked.indexOf('src/deep/nested/util.ts'));
+    assert.ok(!picked.some((p) => /node_modules|package-lock|\.png|dist\//.test(p)));
   });
 
   test('T14: scoreModel rewards capability match and penalizes overflow', () => {

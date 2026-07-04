@@ -93,6 +93,11 @@
         "icon": "$(globe)"
       },
       {
+        "command": "luigi.connectGitHub",
+        "title": "Luigi: Connect GitHub",
+        "icon": "$(github)"
+      },
+      {
         "command": "luigi.showAgentStatus",
         "title": "Luigi: Show Agent Status"
       },

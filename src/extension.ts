@@ -7,13 +7,15 @@
  *
  * Boot order: logging → model router → tools → codebase index (background) →
  * memory → self-improvement → agent → UI surfaces (chat panel, sidebar,
- * status bar, terminal chat, web app server) → 10 commands.
+ * status bar, terminal chat, web app server, GitHub connector) → 11 commands.
  */
 import * as vscode from 'vscode';
 import { LuigiAgent } from './agent/agentLoop';
 import { ToolRegistry, createDefaultTools } from './agent/tools/toolRegistry';
 import { LuigiChatViewProvider, LuigiServices } from './chat/chatPanel';
 import { CodebaseIndex } from './context/codebaseIndex';
+import { GitHubClient } from './github/githubClient';
+import { createGitHubTools } from './github/githubTools';
 import { SelfImprovement } from './improvement/selfImprove';
 import { ModelRouter } from './inference/modelRouter';
 import { MemorySystem } from './memory/memorySystem';
@@ -35,6 +37,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const router = new ModelRouter(log);
   const tools = new ToolRegistry(log);
   for (const tool of createDefaultTools(log)) {
+    tools.register(tool);
+  }
+
+  // GitHub connector: VS Code's built-in GitHub sign-in supplies the token
+  // (nothing stored by Luigi). Tools work once the user connects; before
+  // that they return a clear "connect first" error instead of hanging.
+  const github = new GitHubClient(async () => {
+    const session = await vscode.authentication.getSession('github', ['repo'], {
+      createIfNone: false,
+    });
+    return session?.accessToken;
+  });
+  for (const tool of createGitHubTools(github, log)) {
     tools.register(tool);
   }
 
@@ -127,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // ── Commands (all 10) ────────────────────────────────────────────────────
+  // ── Commands (all 11) ────────────────────────────────────────────────────
   const openChat = (): void => {
     void chatView.reveal();
   };
@@ -254,6 +269,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
 
+    vscode.commands.registerCommand('luigi.connectGitHub', async () => {
+      try {
+        const session = await vscode.authentication.getSession('github', ['repo'], {
+          createIfNone: true,
+        });
+        log(`GitHub connected as ${session.account.label}.`);
+        void vscode.window.showInformationMessage(
+          `Luigi is connected to GitHub as ${session.account.label}. Ask Luigi to list, review, or improve your repos; commits and pull requests always ask for your approval first.`
+        );
+      } catch (error) {
+        void vscode.window.showErrorMessage(`GitHub sign-in did not complete: ${describe(error)}`);
+      }
+    }),
+
     vscode.commands.registerCommand('luigi.openWebApp', async () => {
       const config = vscode.workspace.getConfiguration('luigi');
 
@@ -374,7 +403,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   });
 
-  log('Luigi Codes ready. 10 commands registered.');
+  log('Luigi Codes ready. 11 commands registered.');
 }
 
 export function deactivate(): void {
