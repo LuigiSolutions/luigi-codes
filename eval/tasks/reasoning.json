@@ -1,0 +1,78 @@
+{
+  "suite": "reasoning",
+  "note": "Multi-step reasoning. The model is asked to think and end with a line 'Final answer: X'. We extract that answer and compare. Numeric answers compare as numbers; text answers compare normalized. Small seed set, grow over time.",
+  "tasks": [
+    {
+      "id": "reason-01-trains",
+      "prompt": "A train travels 60 miles in 1.5 hours. At the same average speed, how many miles does it travel in 4 hours? End with a line 'Final answer: X' where X is the number.",
+      "answer": "160",
+      "type": "number"
+    },
+    {
+      "id": "reason-02-apples",
+      "prompt": "A store had 120 apples. It sold 3/4 of them in the morning and 1/3 of the remainder in the afternoon. How many apples are left? End with a line 'Final answer: X'.",
+      "answer": "20",
+      "type": "number"
+    },
+    {
+      "id": "reason-03-ages",
+      "prompt": "Sam is twice as old as Kate. In 5 years, the sum of their ages will be 40. How old is Kate now? End with a line 'Final answer: X'.",
+      "answer": "10",
+      "type": "number"
+    },
+    {
+      "id": "reason-04-discount",
+      "prompt": "A jacket costs $80. It is discounted 25%, then an additional 10% is taken off the discounted price at checkout. What is the final price in dollars? End with a line 'Final answer: X'.",
+      "answer": "54",
+      "type": "number"
+    },
+    {
+      "id": "reason-05-widgets",
+      "prompt": "If 5 machines make 5 widgets in 5 minutes, how many minutes do 100 machines take to make 100 widgets? End with a line 'Final answer: X'.",
+      "answer": "5",
+      "type": "number"
+    },
+    {
+      "id": "reason-06-pool",
+      "prompt": "A pipe fills a pool in 6 hours. A drain empties it in 12 hours. With both open on an empty pool, how many hours to fill it? End with a line 'Final answer: X'.",
+      "answer": "12",
+      "type": "number"
+    },
+    {
+      "id": "reason-07-logic-liar",
+      "prompt": "On an island, knights always tell the truth and knaves always lie. A says 'B is a knave.' B says 'A and I are the same type.' What is B? Answer with a single word. End with a line 'Final answer: X'.",
+      "answer": "knave",
+      "type": "text"
+    },
+    {
+      "id": "reason-08-sequence",
+      "prompt": "What is the next number in the sequence 2, 6, 12, 20, 30, ...? End with a line 'Final answer: X'.",
+      "answer": "42",
+      "type": "number"
+    },
+    {
+      "id": "reason-09-book",
+      "prompt": "A book has 200 pages. On day 1 you read 20 pages. Each following day you read 5 more pages than the previous day. On which day do you finish the book? End with a line 'Final answer: X'.",
+      "answer": "7",
+      "type": "number"
+    },
+    {
+      "id": "reason-10-remainder",
+      "prompt": "What is the remainder when 2 raised to the 10th power is divided by 7? End with a line 'Final answer: X'.",
+      "answer": "2",
+      "type": "number"
+    },
+    {
+      "id": "reason-11-marbles",
+      "prompt": "A bag has 3 red and 2 blue marbles. You draw 2 without replacement. What is the probability both are red? Give the answer as a fraction in lowest terms like 3/10. End with a line 'Final answer: X'.",
+      "answer": "3/10",
+      "type": "text"
+    },
+    {
+      "id": "reason-12-clock",
+      "prompt": "How many degrees are between the hour and minute hands of a clock at 3:15? End with a line 'Final answer: X' where X is the number of degrees.",
+      "answer": "7.5",
+      "type": "number"
+    }
+  ]
+}

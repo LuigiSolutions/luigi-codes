@@ -8,6 +8,7 @@ out/**/*.map
 out/**/*.d.ts
 scripts/**
 eval/**
+docs/**
 node_modules/**
 tsconfig.json
 .vscodeignore

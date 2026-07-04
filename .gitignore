@@ -8,6 +8,12 @@ node_modules/
 HANDOFF.md
 .claude/
 
+# Internal strategy docs — keep off the public repo (local reference only)
+docs/
+
+# Eval run artifacts (harness + task sets are tracked; per-run reports are not)
+eval/reports/
+
 # OS noise
 .DS_Store
 .vercel

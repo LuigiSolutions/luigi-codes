@@ -207,6 +207,7 @@
     "pretest": "npm run compile",
     "test": "node ./out/test/runTest.js",
     "web": "node ./out/web/standalone.js",
+    "eval": "node scripts/eval.mjs",
     "audit:imports": "node scripts/audit-imports.mjs",
     "audit:brand": "node scripts/audit-brand.mjs",
     "audit:copy": "node scripts/audit-copy.mjs"
