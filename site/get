@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#
+# Luigi Codes one-command setup.
+#   curl -fsSL https://luigi-codes.vercel.app/get | bash
+#
+# What it does, in order:
+#   1. Checks for git and Node.js 18+ (tells you exactly what to install if missing)
+#   2. Clones (or updates) Luigi Codes into ~/luigi-codes
+#   3. Installs dev dependencies and compiles
+#   4. If VS Code's CLI is available: packages and installs the extension
+#   5. If Ollama is available: starts pulling a recommended model in the background
+#   6. Starts the Luigi Codes web app at http://localhost:8091
+#
+# Everything stays on your machine. The browser tab that sent you here will
+# detect the app coming up and open it for you.
+
+set -euo pipefail
+
+GOLD=$'\033[38;2;201;168;106m'
+MUTED=$'\033[38;2;156;148;138m'
+RED=$'\033[38;2;232;121;110m'
+RESET=$'\033[0m'
+
+say()  { printf '%s%s%s\n' "$GOLD" "$1" "$RESET"; }
+note() { printf '%s%s%s\n' "$MUTED" "$1" "$RESET"; }
+fail() { printf '%s%s%s\n' "$RED" "$1" "$RESET"; exit 1; }
+
+REPO_URL="https://github.com/LuigiSolutions/luigi-codes"
+DIR="${LUIGI_HOME:-$HOME/luigi-codes}"
+PORT=8091
+
+say "LUIGI CODES · one-command setup"
+note "Everything runs on your machine. Nothing is sent anywhere."
+echo
+
+# 1. Prerequisites ------------------------------------------------------------
+command -v git >/dev/null 2>&1 || fail "git is required. On macOS run: xcode-select --install"
+command -v node >/dev/null 2>&1 || fail "Node.js 18+ is required. Install from https://nodejs.org"
+NODE_MAJOR="$(node -e 'console.log(process.versions.node.split(".")[0])')"
+[ "$NODE_MAJOR" -ge 18 ] || fail "Node.js 18+ is required (you have $(node -v)). Update at https://nodejs.org"
+
+# 2. Get the code ---------------------------------------------------------------
+if [ -d "$DIR/.git" ]; then
+  note "Updating existing install in $DIR"
+  git -C "$DIR" pull --ff-only || note "Could not fast-forward; continuing with what you have."
+else
+  say "Cloning Luigi Codes into $DIR"
+  git clone --depth 1 "$REPO_URL" "$DIR"
+fi
+cd "$DIR"
+
+# 3. Build ---------------------------------------------------------------------
+say "Installing dependencies (dev-only; the app itself has zero runtime deps)"
+npm install --no-audit --no-fund --loglevel=error
+say "Compiling"
+npm run compile
+
+# 4. VS Code extension (best effort) --------------------------------------------
+if command -v code >/dev/null 2>&1; then
+  say "Installing the VS Code extension"
+  npx vsce package >/dev/null 2>&1 || true
+  VSIX="$(ls -t luigi-codes-*.vsix 2>/dev/null | head -1 || true)"
+  if [ -n "$VSIX" ]; then
+    code --install-extension "$VSIX" >/dev/null 2>&1 \
+      && note "Extension installed. Look for Luigi in the VS Code activity bar." \
+      || note "Could not install the extension automatically; run: code --install-extension $VSIX"
+  fi
+else
+  note "VS Code CLI not found; skipping the extension (the web app works on its own)."
+fi
+
+# 5. Model (best effort) ---------------------------------------------------------
+if command -v ollama >/dev/null 2>&1; then
+  if ollama list 2>/dev/null | grep -q "qwen2.5-coder"; then
+    note "Model already present (qwen2.5-coder)."
+  else
+    say "Pulling qwen2.5-coder:7b in the background (about 4.4GB; chat unlocks when it lands)"
+    nohup ollama pull qwen2.5-coder:7b >/tmp/luigi-model-pull.log 2>&1 &
+  fi
+else
+  note "Ollama not found. Install it from https://ollama.com then run: ollama pull qwen2.5-coder:7b"
+  note "The web app opens anyway and connects the moment a model server appears."
+fi
+
+# 6. Launch the web app -----------------------------------------------------------
+if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
+  note "Something is already listening on port $PORT; assuming Luigi is running."
+else
+  say "Starting the Luigi Codes web app on http://localhost:$PORT"
+  nohup node out/web/standalone.js --port $PORT >"$HOME/.luigi-codes-web.log" 2>&1 &
+  sleep 1
+fi
+
+echo
+say "Done. Your browser tab will open Luigi Codes automatically,"
+say "or visit: http://localhost:$PORT"
+note "Web app log: ~/.luigi-codes-web.log · Start it again anytime with: cd $DIR && npm run web"

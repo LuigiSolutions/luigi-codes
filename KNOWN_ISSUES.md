@@ -44,6 +44,12 @@ Honest ledger of what is knowingly imperfect, so nobody rediscovers these as sur
   your Wi-Fi (like most local-network tools). The per-session token gates
   access; treat the URL like a password. HTTPS would require a self-signed
   cert ceremony on every device — declined for now.
+- **Same-machine requests skip the token (deliberate).** Loopback-socket
+  requests with a loopback Host header get in tokenless, so the site's
+  Get Luigi Codes launcher can auto-open the app. The Host check defeats DNS
+  rebinding; other login sessions on the same machine could reach the app
+  (single-user machines assumed). LAN clients always need the token. CORS is
+  answered only for https://luigi-codes.vercel.app, status endpoint only.
 - **Stop-marker guard is per-frame.** A chat-template stop marker split across
   two stream frames wouldn't be caught; mlx-lm decodes markers as single
   tokens, so frames carry them whole in practice.

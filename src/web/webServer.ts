@@ -54,6 +54,9 @@ interface WireMessage {
 const MAX_BODY_BYTES = 2_000_000; // a whole conversation, with headroom
 const MAX_MESSAGES = 200;
 
+/** The public site allowed to poll /api/status (the Get Luigi Codes launcher). */
+const SITE_ORIGIN = 'https://luigi-codes.vercel.app';
+
 const SYSTEM_PROMPT =
   'You are Luigi, an expert software engineer built by Luigi Solutions, running fully on the local machine. ' +
   'Be direct and concrete. Always put code in fenced blocks with a language tag. ' +
@@ -137,6 +140,14 @@ export class LuigiWebServer {
 
   private async handle(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    // CORS preflight (the luigi-codes.vercel.app launcher polls /api/status to
+    // auto-open the app). Answered before auth: preflights carry no token.
+    if (req.method === 'OPTIONS') {
+      this.writeCors(req, res);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
     if (!this.authorized(req, url)) {
       res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(this.unauthorizedPage());
@@ -151,6 +162,7 @@ export class LuigiWebServer {
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/status') {
+      this.writeCors(req, res);
       await this.handleStatus(res);
       return;
     }
@@ -162,14 +174,40 @@ export class LuigiWebServer {
     res.end('not found');
   }
 
-  /** Constant-time token check; header for API calls, query for the first page load. */
+  /**
+   * Who gets in:
+   * 1. Anyone presenting the session token (header or query), from anywhere.
+   * 2. Same-machine requests (loopback socket) WITHOUT a token, provided the
+   *    Host header is a loopback name. The Host check defeats DNS rebinding
+   *    (a malicious site resolving its domain to 127.0.0.1 sends its own
+   *    hostname in Host); the socket check means it is genuinely this machine.
+   *    LAN/phone clients always need the token.
+   */
   private authorized(req: http.IncomingMessage, url: URL): boolean {
     const header = req.headers['x-luigi-token'];
     const presented =
       (typeof header === 'string' ? header : undefined) ?? url.searchParams.get('token') ?? '';
-    const a = Buffer.from(presented);
-    const b = Buffer.from(this.token);
-    return a.length === b.length && timingSafeEqual(a, b);
+    if (presented.length > 0) {
+      const a = Buffer.from(presented);
+      const b = Buffer.from(this.token);
+      return a.length === b.length && timingSafeEqual(a, b);
+    }
+    return isLoopbackSocket(req) && isLoopbackHost(req.headers.host);
+  }
+
+  /** CORS for the public site's launcher: status polling only, no credentials. */
+  private writeCors(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const origin = req.headers.origin;
+    if (origin !== SITE_ORIGIN) {
+      return;
+    }
+    res.setHeader('Access-Control-Allow-Origin', SITE_ORIGIN);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'content-type, x-luigi-token');
+    // Chrome Private Network Access: public https page probing a local server.
+    if (req.headers['access-control-request-private-network'] === 'true') {
+      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
   }
 
   // ── API: status ────────────────────────────────────────────────────────────
@@ -341,15 +379,18 @@ export class LuigiWebServer {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   private computeUrls(host: string): string[] {
-    const suffix = `:${this.boundPort}/?token=${this.token}`;
+    // Same-machine access is tokenless (loopback + Host check); only LAN URLs
+    // carry the token, because remote clients have no other key.
+    const tokenSuffix = `:${this.boundPort}/?token=${this.token}`;
+    const local = `http://localhost:${this.boundPort}/`;
     if (host !== '0.0.0.0' && host !== '::') {
-      return [`http://${host === '127.0.0.1' ? 'localhost' : host}${suffix}`];
+      return [host === '127.0.0.1' || host === 'localhost' ? local : `http://${host}${tokenSuffix}`];
     }
-    const urls = [`http://localhost${suffix}`];
+    const urls = [local];
     for (const list of Object.values(os.networkInterfaces())) {
       for (const iface of list ?? []) {
         if (iface.family === 'IPv4' && !iface.internal) {
-          urls.push(`http://${iface.address}${suffix}`);
+          urls.push(`http://${iface.address}${tokenSuffix}`);
         }
       }
     }
@@ -1041,6 +1082,21 @@ function sanitizeMessages(raw: unknown): WireMessage[] | undefined {
     }
   }
   return out;
+}
+
+/** True when the TCP peer is this same machine. */
+function isLoopbackSocket(req: http.IncomingMessage): boolean {
+  const address = req.socket.remoteAddress ?? '';
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+/** True when the browser addressed a loopback name (DNS-rebinding guard). */
+function isLoopbackHost(host: string | undefined): boolean {
+  if (!host) {
+    return false;
+  }
+  const name = host.replace(/:\d+$/, '').toLowerCase();
+  return name === 'localhost' || name === '127.0.0.1' || name === '[::1]';
 }
 
 function describe(error: unknown): string {

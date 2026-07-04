@@ -6,6 +6,7 @@
  */
 import * as assert from 'assert';
 import * as fs from 'fs';
+import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -544,12 +545,32 @@ suite('Luigi Codes', () => {
     return { server, base: `http://127.0.0.1:${port}` };
   }
 
-  test('T20: web app serves the branded chat page only with the session token', async () => {
+  /** Raw GET with a spoofed Host header (fetch forbids setting Host). */
+  function getWithHost(port: number, host: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const request = http.request(
+        { hostname: '127.0.0.1', port, path: '/', method: 'GET', headers: { Host: host } },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode ?? 0);
+        }
+      );
+      request.on('error', reject);
+      request.end();
+    });
+  }
+
+  test('T20: web app access model: same-machine tokenless, rebinding blocked, wrong token refused', async () => {
     const { server, base } = await startedWebServer();
     try {
-      // No token → locked out. Wrong token → locked out.
-      assert.strictEqual((await fetch(`${base}/`)).status, 401);
+      // Same machine, honest loopback Host, no token → welcome (the site's
+      // Get Luigi Codes launcher depends on this).
+      assert.strictEqual((await fetch(`${base}/`)).status, 200);
+      // A WRONG token is refused even from loopback.
       assert.strictEqual((await fetch(`${base}/?token=${'0'.repeat(48)}`)).status, 401);
+      // DNS rebinding: loopback socket but a foreign Host name → locked out.
+      assert.strictEqual(await getWithHost(server.port, 'evil.example.com'), 401);
+      assert.strictEqual(await getWithHost(server.port, 'localhost:9999'), 200);
 
       const ok = await fetch(`${base}/?token=${server.token}`);
       assert.strictEqual(ok.status, 200);
@@ -588,11 +609,9 @@ suite('Luigi Codes', () => {
     }
   });
 
-  test('T21: web /api/status degrades gracefully with no model server', async () => {
+  test('T21: web /api/status degrades gracefully and speaks CORS only to the site', async () => {
     const { server, base } = await startedWebServer();
     try {
-      // API calls authenticate via header, not query.
-      assert.strictEqual((await fetch(`${base}/api/status`)).status, 401);
       const response = await fetch(`${base}/api/status`, {
         headers: { 'x-luigi-token': server.token },
       });
@@ -601,6 +620,28 @@ suite('Luigi Codes', () => {
       assert.strictEqual(status.reachable, false, 'Dead endpoint must report unreachable.');
       assert.deepStrictEqual(status.models, []);
       assert.strictEqual(status.endpoint, 'http://127.0.0.1:9');
+
+      // The launcher on luigi-codes.vercel.app may poll status cross-origin…
+      const preflight = await fetch(`${base}/api/status`, {
+        method: 'OPTIONS',
+        headers: {
+          origin: 'https://luigi-codes.vercel.app',
+          'access-control-request-method': 'GET',
+          'access-control-request-private-network': 'true',
+        },
+      });
+      assert.strictEqual(preflight.status, 204);
+      assert.strictEqual(
+        preflight.headers.get('access-control-allow-origin'),
+        'https://luigi-codes.vercel.app'
+      );
+      assert.strictEqual(preflight.headers.get('access-control-allow-private-network'), 'true');
+
+      // …but any other origin gets no CORS invitation.
+      const foreign = await fetch(`${base}/api/status`, {
+        headers: { origin: 'https://evil.example.com' },
+      });
+      assert.strictEqual(foreign.headers.get('access-control-allow-origin'), null);
     } finally {
       await server.stop();
     }

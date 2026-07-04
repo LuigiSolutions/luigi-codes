@@ -228,9 +228,9 @@
   pre code .c { color: var(--ink-faint); }
 
   /* ── Install gate ── */
-  #gate .fields { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin: 16px 0 14px; }
-  @media (max-width: 560px) { #gate .fields { grid-template-columns: 1fr; } }
-  #gate input {
+  .auth-card .fields { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin: 16px 0 14px; }
+  @media (max-width: 560px) { .auth-card .fields { grid-template-columns: 1fr; } }
+  .auth-card input {
     background: var(--canvas);
     border: 1px solid var(--hairline);
     border-radius: 2px;
@@ -242,15 +242,69 @@
     outline: none;
     transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
   }
-  #gate input::placeholder { color: var(--ink-faint); }
-  #gate input:focus { border-color: var(--gold); box-shadow: var(--glow); }
-  #gate button { border: none; cursor: pointer; font-family: var(--sans); width: 100%; }
-  #gate button:disabled { opacity: 0.6; cursor: wait; box-shadow: none; }
-  #gate .fine { color: var(--ink-faint); font-size: 12px; margin-top: 12px; text-align: center; }
-  #gate .gate-error { color: var(--ink-muted); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
-  #gate .gate-error a { color: var(--gold); }
+  .auth-card input::placeholder { color: var(--ink-faint); }
+  .auth-card input:focus { border-color: var(--gold); box-shadow: var(--glow); }
+  .auth-card form > button { border: none; cursor: pointer; font-family: var(--sans); width: 100%; }
+  .auth-card form > button:disabled { opacity: 0.6; cursor: wait; box-shadow: none; }
+  .auth-card .fine { color: var(--ink-faint); font-size: 12px; margin-top: 12px; text-align: center; }
+  .auth-card .gate-error { color: var(--ink-muted); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
   /* Bots see this field; humans never do. */
   .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+  /* ── Launcher: the luigi-os loader, values copied exactly ── */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .loader {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 24px; padding: 24px 0 8px;
+  }
+  /* The gold LS mark gently spins while it breathes (~3s/revolution); the loop
+     is seamless: rotate 0/360 and scale 1 coincide at the boundary. */
+  @keyframes loader-mark {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.05); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  .loader-mark {
+    width: 96px; height: 96px;
+    transform-origin: center;
+    animation: loader-mark 3s linear infinite;
+    user-select: none; -webkit-user-select: none;
+  }
+  /* A soft cross-fade as each playful status swaps in (1.5s cadence in JS). */
+  @keyframes loader-message {
+    from { opacity: 0; transform: translateY(0.25rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .loader-msg-line { font-size: 14px; color: var(--ink-muted); white-space: nowrap; text-align: center; }
+  .loader-msg { display: inline-block; animation: loader-message 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .loader-mark { animation: none; transform: none; }
+    .loader-msg { animation: none; opacity: 1; transform: none; }
+  }
+  .launch-status {
+    text-align: center; color: var(--gold);
+    font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+    margin: 8px 0 20px;
+  }
+  .setup-how p { color: var(--ink-muted); font-size: 14px; margin-bottom: 12px; }
+  .setup-how code { font-family: var(--mono); }
+  pre.cmd { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px; }
+  pre.cmd code { flex: 1; overflow-x: auto; }
+  .copy-cmd {
+    flex: none; background: none; border: 1px solid var(--hairline); border-radius: 2px;
+    color: var(--gold); cursor: pointer;
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 10px;
+    transition: all 150ms var(--ease);
+  }
+  .copy-cmd:hover { border-color: var(--gold); color: var(--gold-light); }
+  .launch-open { text-align: center; margin-top: 16px; }
+  .login-fields { grid-template-columns: 1fr; }
+  .fine a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
+  .fine a:hover { color: var(--gold-light); }
 
   /* ── Footer ── */
   footer {
@@ -279,6 +333,7 @@
     <nav>
       <a href="#capabilities">Features</a>
       <a href="#install">Install</a>
+      <a href="#install" id="navLogin">Login</a>
     </nav>
   </div>
 </header>
@@ -293,7 +348,7 @@
     long-term memory, and a self-improvement loop, on models that run entirely on your computer.
     No API keys. No per-token bills. No code leaving your machine.</p>
     <div class="cta-row reveal d4">
-      <a class="btn btn-gold" href="#install">Install</a>
+      <a class="btn btn-gold" href="#install">Get Luigi Codes</a>
     </div>
     <div class="truths reveal d4">
       <div class="truth"><div class="val">$0</div><div class="label">per token, forever</div></div>
@@ -371,7 +426,7 @@
         <h2>Running in five minutes.</h2>
         <p>Luigi needs VS Code 1.85+ and a local inference server. <a href="https://ollama.com" style="color: var(--gold);">Ollama</a> is the easiest start.</p>
       </div>
-      <div class="step" id="gate">
+      <div class="step auth-card" id="gate">
         <span class="n">First, where should we send your welcome?</span>
         <p>Luigi Codes is evolving fast. Leave your first name and email. You'll get a
         welcome note now, and occasional updates about new features and important
@@ -382,9 +437,23 @@
             <input name="email" id="leadEmail" type="email" placeholder="you@example.com" autocomplete="email" required maxlength="120">
           </div>
           <input class="hp" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <button class="btn btn-gold" id="leadSubmit" type="submit">Install Luigi Codes</button>
+          <button class="btn btn-gold" id="leadSubmit" type="submit">Get Luigi Codes</button>
           <p class="gate-error" id="gateError">That didn't go through. Check the email address and try again.</p>
-          <p class="fine">We only email about Luigi Codes. Unsubscribe anytime.</p>
+          <p class="fine">We only email about Luigi Codes. Unsubscribe anytime.
+            <a href="#install" id="toLogin">Already have an account? Log in</a></p>
+        </form>
+      </div>
+
+      <div class="step auth-card" id="loginCard" hidden>
+        <span class="n">Welcome back</span>
+        <p>Enter the email you signed up with and we'll open your Luigi Codes.</p>
+        <form id="loginForm" novalidate>
+          <div class="fields login-fields">
+            <input name="email" id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required maxlength="120">
+          </div>
+          <button class="btn btn-gold" id="loginSubmit" type="submit">Open Luigi Codes</button>
+          <p class="gate-error" id="loginError">We couldn't find that email. Check it, or get Luigi Codes below.</p>
+          <p class="fine"><a href="#install" id="toSignup">New here? Get Luigi Codes</a></p>
         </form>
       </div>
 
@@ -403,33 +472,113 @@
 
 <script>
   (function () {
-    var KEY = 'luigi-steps-v1';
-    var gate = document.getElementById('gate');
-    var steps = document.getElementById('steps');
-    var form = document.getElementById('leadForm');
-    var nameEl = document.getElementById('leadName');
-    var emailEl = document.getElementById('leadEmail');
-    var submit = document.getElementById('leadSubmit');
-    var errorEl = document.getElementById('gateError');
+    var KEY = 'luigi-launcher-v1';
+    var APP = 'http://localhost:8091/';
+    var STATUS = 'http://127.0.0.1:8091/api/status';
+    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-    function open(instructions) {
-      if (instructions) { steps.innerHTML = instructions; }
-      if (!steps.innerHTML) { return; } // nothing to show without the server's steps
-      gate.hidden = true;
-      steps.hidden = false;
+    var gate = document.getElementById('gate');
+    var loginCard = document.getElementById('loginCard');
+    var steps = document.getElementById('steps');
+    var installSection = document.getElementById('install');
+
+    function store(value) { try { localStorage.setItem(KEY, value); } catch (e) { /* fine */ } }
+    function stored() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+
+    function showCard(which) {
+      gate.hidden = which !== 'gate';
+      loginCard.hidden = which !== 'login';
+      steps.hidden = which !== 'launcher';
     }
 
-    // Returning visitors go straight to the instructions they already unlocked.
-    try {
-      var saved = localStorage.getItem(KEY);
-      if (saved) { open(saved); }
-    } catch (e) { /* storage blocked: the gate simply shows */ }
+    // ── The launcher: luigi-os loader + poll this machine, open when found ──
+    var LOADER_MESSAGES = [
+      'Eating...',
+      'Traveling to space...',
+      'Moonwalking...',
+      'Chasing its tail...',
+      'Polishing its gold...',
+      'Doing cartwheels...',
+      'Counting the stars...'
+    ];
+    var MESSAGE_INTERVAL_MS = 1500;
+    var launcherTimers = [];
 
+    function startLauncher(html) {
+      if (html) { steps.innerHTML = html; }
+      if (!steps.innerHTML) { return; }
+      showCard('launcher');
+      steps.scrollIntoView({ behavior: 'smooth' });
+      launcherTimers.forEach(clearInterval);
+      launcherTimers = [];
+
+      var msgEl = document.getElementById('loaderMsg');
+      var statusEl = document.getElementById('launchStatus');
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var index = 0;
+      if (!reduced && msgEl) {
+        launcherTimers.push(setInterval(function () {
+          index = (index + 1) % LOADER_MESSAGES.length;
+          var next = msgEl.cloneNode(false); // re-adding restarts the fade-up
+          next.textContent = LOADER_MESSAGES[index];
+          msgEl.parentNode.replaceChild(next, msgEl);
+          msgEl = next;
+        }, MESSAGE_INTERVAL_MS));
+      }
+
+      var found = false;
+      function poll() {
+        if (found) { return; }
+        fetch(STATUS, { mode: 'cors' }).then(function (r) {
+          if (!r.ok || found) { return; }
+          found = true;
+          launcherTimers.forEach(clearInterval);
+          if (statusEl) { statusEl.textContent = 'Luigi Codes is up. Launching...'; }
+          setTimeout(function () { window.location.href = APP; }, 700);
+        }).catch(function () { /* not up yet; keep waiting */ });
+      }
+      poll();
+      launcherTimers.push(setInterval(poll, 2000));
+    }
+
+    // Copy button inside the injected launcher (event delegation survives injection).
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (t && t.classList && t.classList.contains('copy-cmd')) {
+        var cmd = document.getElementById('getCmd');
+        var done = function () {
+          t.textContent = 'Copied';
+          setTimeout(function () { t.textContent = 'Copy'; }, 1500);
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(cmd.textContent).then(done, done);
+        } else { done(); }
+      }
+    });
+
+    // ── Card switching ──
+    document.getElementById('navLogin').addEventListener('click', function () {
+      var saved = stored();
+      if (saved) { startLauncher(saved); } else { showCard('login'); }
+    });
+    document.getElementById('toLogin').addEventListener('click', function (e) {
+      e.preventDefault();
+      showCard('login');
+    });
+    document.getElementById('toSignup').addEventListener('click', function (e) {
+      e.preventDefault();
+      showCard('gate');
+    });
+
+    // ── Signup (Get Luigi Codes) ──
+    var form = document.getElementById('leadForm');
+    var submit = document.getElementById('leadSubmit');
+    var errorEl = document.getElementById('gateError');
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var firstName = nameEl.value.trim();
-      var email = emailEl.value.trim();
-      if (!firstName || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      var firstName = document.getElementById('leadName').value.trim();
+      var email = document.getElementById('leadEmail').value.trim();
+      if (!firstName || !EMAIL_RE.test(email)) {
         errorEl.style.display = 'block';
         return;
       }
@@ -439,23 +588,52 @@
       fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: firstName,
-          email: email,
-          company: form.elements.company.value
-        })
+        body: JSON.stringify({ firstName: firstName, email: email, company: form.elements.company.value })
       }).then(function (r) {
         if (!r.ok) { throw new Error('HTTP ' + r.status); }
         return r.json();
       }).then(function (payload) {
         if (!payload.instructions) { throw new Error('no instructions'); }
-        try { localStorage.setItem(KEY, payload.instructions); } catch (e) { /* fine */ }
-        open(payload.instructions);
-        steps.scrollIntoView({ behavior: 'smooth' });
+        store(payload.instructions);
+        startLauncher(payload.instructions);
       }).catch(function () {
         submit.disabled = false;
-        submit.textContent = 'Install Luigi Codes';
+        submit.textContent = 'Get Luigi Codes';
         errorEl.style.display = 'block';
+      });
+    });
+
+    // ── Login (returning members) ──
+    var loginForm = document.getElementById('loginForm');
+    var loginSubmit = document.getElementById('loginSubmit');
+    var loginError = document.getElementById('loginError');
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = document.getElementById('loginEmail').value.trim();
+      if (!EMAIL_RE.test(email)) {
+        loginError.style.display = 'block';
+        return;
+      }
+      loginError.style.display = 'none';
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = 'One moment…';
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.json();
+      }).then(function (payload) {
+        if (!payload.instructions) { throw new Error('no instructions'); }
+        store(payload.instructions);
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = 'Open Luigi Codes';
+        startLauncher(payload.instructions);
+      }).catch(function () {
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = 'Open Luigi Codes';
+        loginError.style.display = 'block';
       });
     });
   })();

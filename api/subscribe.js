@@ -11,6 +11,7 @@
  * Zero npm dependencies: Blob and Resend are called over their REST APIs.
  */
 const crypto = require('node:crypto');
+const { LAUNCHER_HTML } = require('./_launcher.js');
 
 // Luigi Solutions palette (email clients need inline values, not CSS vars).
 const CANVAS = '#0b0a09';
@@ -22,28 +23,7 @@ const HAIRLINE = 'rgba(201, 168, 106, 0.32)';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/**
- * The setup steps, returned ONLY by this endpoint after a signup. They are
- * deliberately absent from the landing page's HTML so the repo URL cannot be
- * lifted from view-source without leaving an email.
- */
-const INSTRUCTIONS_HTML = `
-        <div class="step">
-          <span class="n">01 · Get a local model</span>
-<pre><code>ollama pull qwen2.5-coder:7b       <span class="c"># strong small coder</span>
-ollama pull nomic-embed-text       <span class="c"># embeddings for index + memory</span></code></pre>
-        </div>
-        <div class="step">
-          <span class="n">02 · Install the extension</span>
-          <p>VS Code Marketplace listing is on its way. Today, build from source. It takes about a minute:</p>
-<pre><code>git clone https://github.com/LuigiSolutions/luigi-codes
-cd luigi-codes &amp;&amp; npm install &amp;&amp; npm run compile
-npx vsce package &amp;&amp; code --install-extension luigi-codes-0.2.0.vsix</code></pre>
-        </div>
-        <div class="step">
-          <span class="n">03 · Meet Luigi</span>
-          <p>Click the 🍄 in the activity bar. For your phone: run <em>“Luigi: Open Web App (Desktop &amp; Mobile)”</em> from the command palette.</p>
-        </div>`;
+// The post-gate screen: the launcher (loader + one-command setup + auto-open).
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -70,7 +50,7 @@ module.exports = async (req, res) => {
   // (Instructions still returned: an aggressive browser autofill can trip the
   // honeypot on a real person, and a bot gains nothing it couldn't clone.)
   if (honeypot.length > 0) {
-    res.status(200).json({ stored: true, emailed: false, instructions: INSTRUCTIONS_HTML });
+    res.status(200).json({ stored: true, emailed: false, instructions: LAUNCHER_HTML });
     return;
   }
   if (name.length === 0 || email.length > 120 || !EMAIL_RE.test(email)) {
@@ -143,7 +123,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  res.status(200).json({ stored: true, already: !isNew, emailed, instructions: INSTRUCTIONS_HTML });
+  res.status(200).json({ stored: true, already: !isNew, emailed, instructions: LAUNCHER_HTML });
 };
 
 function welcomeText(name) {
