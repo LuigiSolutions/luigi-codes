@@ -171,7 +171,7 @@ function welcomeHtml(name) {
 <body style="margin:0;padding:0;background:${CANVAS};">
   <div style="max-width:560px;margin:0 auto;padding:40px 24px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="text-align:center;padding-bottom:28px;">
-      <div style="font-size:44px;line-height:1;">🍄</div>
+      <img src="https://luigi-codes.vercel.app/brand/luigi-solutions-mark-transparent.png" width="72" height="72" alt="Luigi Solutions" style="display:inline-block;">
       <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:${GOLD};padding-top:14px;">Luigi Solutions · Private Local AI</div>
     </div>
     <div style="background:${SURFACE};border:1px solid ${HAIRLINE};border-radius:4px;padding:32px 28px;">

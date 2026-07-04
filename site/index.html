@@ -8,7 +8,8 @@
 <meta property="og:title" content="Luigi Codes · Premium local AI coding agent">
 <meta property="og:description" content="Private, powerful, yours. A VS Code coding agent that runs entirely on your machine.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍄</text></svg>">
+<link rel="icon" type="image/png" href="/brand/luigi-solutions-mark-transparent.png">
+<meta property="og:image" content="https://luigi-codes.vercel.app/brand/luigi-solutions-logo-transparent.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
@@ -77,7 +78,8 @@
     text-decoration: none;
     white-space: nowrap;
   }
-  .wordmark .shroom { letter-spacing: 0; margin-right: 10px; }
+  .wordmark { display: inline-flex; align-items: center; }
+  .wordmark .ls-mark { height: 30px; width: auto; margin-right: 10px; }
   nav { display: flex; gap: 20px; align-items: center; }
   nav a {
     color: var(--ink-muted);
@@ -91,7 +93,7 @@
 
   /* ── Hero ── */
   .hero { padding: 96px 0 72px; text-align: center; }
-  .hero .mark { font-size: 56px; line-height: 1; margin-bottom: 24px; }
+  .hero .mark { width: 300px; max-width: 70vw; height: auto; margin-bottom: 8px; }
   .hero h1 {
     font-family: var(--serif);
     font-weight: 400;
@@ -260,7 +262,7 @@
 
 <header>
   <div class="wrap">
-    <a class="wordmark" href="#"><span class="shroom">🍄</span>LUIGI CODES</a>
+    <a class="wordmark" href="#"><img class="ls-mark" src="/brand/luigi-solutions-mark-transparent.png" alt="Luigi Solutions">LUIGI CODES</a>
     <nav>
       <a href="#capabilities">Features</a>
       <a href="#install">Install</a>
@@ -270,8 +272,8 @@
 
 <main>
   <div class="hero wrap">
-    <div class="mark reveal">🍄</div>
-    <div class="eyebrow reveal d1">Luigi Solutions · Private Local AI</div>
+    <img class="mark reveal" src="/brand/luigi-solutions-logo-transparent.png" alt="Luigi Solutions">
+    <div class="eyebrow reveal d1">Private Local AI</div>
     <h1 class="reveal d2">Your coding agent.<br>Your machine. <em>Your model.</em></h1>
     <p class="sub reveal d3">A full coding agent for VS Code: chat, autonomous agent, codebase intelligence,
     long-term memory, and a self-improvement loop, on models that run entirely on your computer.
