@@ -540,15 +540,36 @@
       }
 
       var found = false;
+      var misses = 0;
+      var deepLinked = false;
+      function tryDeepLink() {
+        // Ask VS Code (if installed) to start Luigi for us. Browsers allow
+        // launching registered apps via their protocol; a hidden iframe keeps
+        // this page put. If VS Code isn't there, nothing happens and the
+        // command instructions are already on screen.
+        deepLinked = true;
+        if (statusEl) { statusEl.textContent = 'Asking VS Code to start Luigi Codes...'; }
+        var frame = document.createElement('iframe');
+        frame.style.display = 'none';
+        frame.src = 'vscode://LuigiSolutions.luigi-codes/open-web-app';
+        document.body.appendChild(frame);
+        setTimeout(function () {
+          if (frame.parentNode) { frame.parentNode.removeChild(frame); }
+          if (!found && statusEl) { statusEl.textContent = 'Looking for Luigi Codes on this machine...'; }
+        }, 4000);
+      }
       function poll() {
         if (found) { return; }
         fetch(STATUS, { mode: 'cors' }).then(function (r) {
-          if (!r.ok || found) { return; }
+          if (!r.ok || found) { misses++; return; }
           found = true;
           launcherTimers.forEach(clearInterval);
           if (statusEl) { statusEl.textContent = 'Luigi Codes is up. Launching...'; }
           setTimeout(function () { window.location.href = APP; }, 700);
-        }).catch(function () { /* not up yet; keep waiting */ });
+        }).catch(function () {
+          misses++;
+          if (misses === 2 && !deepLinked) { tryDeepLink(); }
+        });
       }
       poll();
       launcherTimers.push(setInterval(poll, 2000));

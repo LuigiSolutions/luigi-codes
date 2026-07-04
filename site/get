@@ -82,10 +82,63 @@ else
   note "The web app opens anyway and connects the moment a model server appears."
 fi
 
-# 6. Launch the web app -----------------------------------------------------------
-if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
-  note "Something is already listening on port $PORT; assuming Luigi is running."
-else
+# 6. Keep Luigi running: register the web app as a login service ------------------
+# macOS: a LaunchAgent starts it at login and restarts it if it stops, so the
+# site's Login button always finds it instantly. Remove anytime with:
+#   launchctl unload ~/Library/LaunchAgents/com.luigisolutions.luigi-codes.plist
+#   rm ~/Library/LaunchAgents/com.luigisolutions.luigi-codes.plist
+NODE_BIN="$(command -v node)"
+SERVICE_OK=0
+if [ "$(uname)" = "Darwin" ] && [ "${LUIGI_NO_SERVICE:-0}" != "1" ]; then
+  PLIST="$HOME/Library/LaunchAgents/com.luigisolutions.luigi-codes.plist"
+  mkdir -p "$HOME/Library/LaunchAgents"
+  cat > "$PLIST" <<PLISTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.luigisolutions.luigi-codes</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$NODE_BIN</string>
+    <string>$DIR/out/web/standalone.js</string>
+    <string>--port</string>
+    <string>$PORT</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$HOME/.luigi-codes-web.log</string>
+  <key>StandardErrorPath</key><string>$HOME/.luigi-codes-web.log</string>
+</dict>
+</plist>
+PLISTEOF
+  launchctl unload "$PLIST" >/dev/null 2>&1 || true
+  if launchctl load "$PLIST" >/dev/null 2>&1; then
+    SERVICE_OK=1
+    say "Luigi Codes now runs in the background and starts with your Mac."
+  fi
+elif command -v systemctl >/dev/null 2>&1 && [ "${LUIGI_NO_SERVICE:-0}" != "1" ]; then
+  UNIT_DIR="$HOME/.config/systemd/user"
+  mkdir -p "$UNIT_DIR"
+  cat > "$UNIT_DIR/luigi-codes.service" <<UNITEOF
+[Unit]
+Description=Luigi Codes web app
+
+[Service]
+ExecStart=$NODE_BIN $DIR/out/web/standalone.js --port $PORT
+Restart=always
+
+[Install]
+WantedBy=default.target
+UNITEOF
+  if systemctl --user enable --now luigi-codes.service >/dev/null 2>&1; then
+    SERVICE_OK=1
+    say "Luigi Codes now runs in the background and starts at login."
+  fi
+fi
+
+# Fallback (service declined or unavailable): start it for this session only.
+if [ "$SERVICE_OK" != "1" ] && ! lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
   say "Starting the Luigi Codes web app on http://localhost:$PORT"
   nohup node out/web/standalone.js --port $PORT >"$HOME/.luigi-codes-web.log" 2>&1 &
   sleep 1
@@ -94,4 +147,4 @@ fi
 echo
 say "Done. Your browser tab will open Luigi Codes automatically,"
 say "or visit: http://localhost:$PORT"
-note "Web app log: ~/.luigi-codes-web.log · Start it again anytime with: cd $DIR && npm run web"
+note "Web app log: ~/.luigi-codes-web.log · Start it manually anytime: cd $DIR && npm run web"

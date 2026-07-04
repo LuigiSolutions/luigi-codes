@@ -352,6 +352,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
+  // Deep link from the website: vscode://LuigiSolutions.luigi-codes/open-web-app
+  // lets luigi-codes.vercel.app start the web app on this machine when its
+  // launcher can't find one running. The browser asks the user first.
+  context.subscriptions.push(
+    vscode.window.registerUriHandler({
+      handleUri: (uri: vscode.Uri) => {
+        if (uri.path === '/open-web-app') {
+          log('Web app requested via deep link from the site.');
+          void vscode.commands.executeCommand('luigi.openWebApp');
+        }
+      },
+    })
+  );
+
   // The web server outlives no window: stop it with the extension.
   context.subscriptions.push({
     dispose: () => {
