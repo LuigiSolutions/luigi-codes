@@ -2,6 +2,8 @@
 
 **Premium local AI coding agent by [Luigi Solutions](https://github.com/LuigiSolutions). Private, powerful, yours.**
 
+**Site:** [luigi-codes.vercel.app](https://luigi-codes.vercel.app) · **Source:** [github.com/LuigiSolutions/luigi-codes](https://github.com/LuigiSolutions/luigi-codes)
+
 Luigi Codes is a VS Code extension that puts a full coding agent — chat, editor commands, an autonomous tool-running agent loop, codebase intelligence, long-term memory, and a self-improvement system — on top of **models that run entirely on your machine**. No API keys, no per-token bills, no code leaving your computer.
 
 ---

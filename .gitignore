@@ -10,3 +10,5 @@ HANDOFF.md
 
 # OS noise
 .DS_Store
+.vercel
+.env*

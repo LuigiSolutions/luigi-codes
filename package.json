@@ -14,6 +14,7 @@
     "type": "git",
     "url": "https://github.com/LuigiSolutions/luigi-codes"
   },
+  "homepage": "https://luigi-codes.vercel.app",
   "engines": {
     "vscode": "^1.85.0"
   },

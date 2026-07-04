@@ -1,0 +1,5 @@
+# Only the static site goes to Vercel.
+*
+!site
+!site/**
+!vercel.json

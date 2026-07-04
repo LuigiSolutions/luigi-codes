@@ -43,6 +43,16 @@ within a few minutes of the first publish.
 v0.2.0 as the initial commit. HANDOFF.md and `.claude/` are gitignored (session
 notes stay off GitHub). Day-to-day: commit and `git push` as usual.
 
+## Step 5 — The project site ✅ DONE (2026-07-04)
+
+**https://luigi-codes.vercel.app** — the landing page in `site/`, hosted on
+Vercel's free tier (project `luigi-codes` under your account, static, no
+build). Redeploy after editing `site/`: `npx vercel deploy --prod --yes`.
+`.vercelignore` ships only `site/` + `vercel.json`; the brand audit covers
+`site/`. Optional later: buy a custom domain (~$12/yr, e.g. luigicodes.dev)
+and add it in the Vercel dashboard → project → Domains; or connect the GitHub
+repo in the dashboard so every push auto-deploys.
+
 ## Decisions to confirm before publishing (owner's call)
 
 - **License.** `LICENSE.md` is currently "free to use, no redistribution,
