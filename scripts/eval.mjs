@@ -57,7 +57,11 @@ const CONFIG = {
   // Reasoning-distilled models spend thousands of tokens thinking before answering;
   // without headroom the reply is all <think> and empty content. Generous by default.
   maxTokens: args['max-tokens'] !== undefined ? Number(args['max-tokens']) : 4096,
-  timeoutMs: args.timeout !== undefined ? Number(args.timeout) : 60000,
+  // Reasoning tasks let the model spend thousands of tokens thinking; a 60s cap was
+  // aborting correct-but-slow generations under server load, adding wall-clock noise to
+  // an otherwise deterministic (temp 0) score. 120s removes that artifact so baseline and
+  // candidate are compared on reasoning, not machine load.
+  timeoutMs: args.timeout !== undefined ? Number(args.timeout) : 120000,
   suite: args.suite || 'all',            // coding | reasoning | all
   difficulty: args.difficulty || 'all',  // all | base | hard
   strategy: args.strategy || 'single',   // single | self-consistency
@@ -332,6 +336,28 @@ function runSelftest() {
   // Vote keys collapse equivalent answers so self-consistency tallies correctly.
   check('vote key number', answerKey('the answer is 1/6', { type: 'number', answer: '0' }) === '6');
   check('vote key text frac', answerKey('\\frac{1}{6}', { type: 'text', answer: '1/6' }) === '1/6');
+
+  // Expert-tier fraction answers (1/5, 1/8, 5/16, 9/10): exact, unreduced-equivalent,
+  // and wrong-fraction cases all scored correctly.
+  check('frac 1/5 exact', answerMatches('1/5', { type: 'text', answer: '1/5' }));
+  check('frac 2/10 folds to 1/5', answerMatches('2/10', { type: 'text', answer: '1/5' }));
+  check('frac 5/16 exact', answerMatches('5/16', { type: 'text', answer: '5/16' }));
+  check('frac 1/8 rejects 1/4', !answerMatches('1/4', { type: 'text', answer: '1/8' }));
+
+  // Structural guard: task files parse and the grown expert tier stays intact, so an
+  // accidental edit that drops or corrupts tasks fails the self-test instead of silently
+  // shrinking the capability gate.
+  try {
+    const rj = JSON.parse(readFileSync(join(TASKS_DIR, 'reasoning.json'), 'utf8'));
+    const cj = JSON.parse(readFileSync(join(TASKS_DIR, 'coding.json'), 'utf8'));
+    const expert = rj.tasks.filter((t) => t.difficulty === 'expert');
+    check('reasoning expert tier >= 25', expert.length >= 25);
+    check('every reasoning task has answer + type', rj.tasks.every((t) => t.answer !== undefined && (t.type === 'number' || t.type === 'text')));
+    check('no duplicate reasoning ids', new Set(rj.tasks.map((t) => t.id)).size === rj.tasks.length);
+    check('coding suite loads', Array.isArray(cj.tasks) && cj.tasks.length > 0);
+  } catch {
+    check('task files parse', false);
+  }
 
   let failed = 0;
   for (const [name, ok] of checks) {

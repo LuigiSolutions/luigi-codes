@@ -209,7 +209,9 @@
     "web": "node ./out/web/standalone.js",
     "eval": "node scripts/eval.mjs",
     "gen:traces": "node scripts/gen-traces.mjs",
+    "import:r1": "node scripts/import-r1-dataset.mjs",
     "filter:traces": "node scripts/filter-traces.mjs",
+    "check:contamination": "node scripts/check-contamination.mjs",
     "audit:imports": "node scripts/audit-imports.mjs",
     "audit:brand": "node scripts/audit-brand.mjs",
     "audit:copy": "node scripts/audit-copy.mjs"
