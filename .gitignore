@@ -17,7 +17,7 @@ eval/reports/
 # Distillation artifacts (prompts + scripts are tracked; generated data is not)
 training/traces/
 training/dataset/
-training/dataset-iter2/
+training/dataset*/
 
 # OS noise
 .DS_Store
