@@ -7,15 +7,21 @@
 set -euo pipefail
 
 echo "== Luigi pod setup =="
+# RunPod's PyTorch images mark the system Python PEP 668 "externally managed", so pip
+# refuses to install without this. The pod is disposable, so breaking system packages is fine.
+export PIP_BREAK_SYSTEM_PACKAGES=1
 pip install -q --upgrade pip
-# The training stack. Versions are a known-good floor; bump/pin if TRL's API differs.
+# The training stack. These EXACT versions were validated end-to-end on an RTX 4090 with
+# torch 2.8.0+cu128 (2026-07-04); train_sft.py is written against this TRL API (SFTConfig
+# uses max_length, SFTTrainer uses processing_class). If RunPod ships a different torch and
+# these conflict, relax to floors and re-check the two VERSION spots in train_sft.py.
 pip install -q \
-  "transformers>=4.44" \
-  "datasets>=2.20" \
-  "peft>=0.12" \
-  "trl>=0.11" \
-  "bitsandbytes>=0.43" \
-  "accelerate>=0.33"
+  "transformers==5.13.0" \
+  "datasets==5.0.0" \
+  "peft==0.19.1" \
+  "trl==1.7.1" \
+  "bitsandbytes==0.49.2" \
+  "accelerate==1.14.0"
 
 python - <<'PY'
 import torch
