@@ -101,7 +101,9 @@ def main():
         logging_steps=5,
         save_strategy="epoch",
         bf16=True,
-        max_seq_length=args.max_seq_len,   # VERSION: some TRL builds want max_length instead
+        # VERSION: TRL renamed this. <=0.11 used max_seq_length; 1.x (installed: trl 1.7)
+        # uses max_length. Confirmed against the installed SFTConfig dataclass fields.
+        max_length=args.max_seq_len,
         packing=False,
         report_to="none",
     )
