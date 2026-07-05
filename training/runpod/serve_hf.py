@@ -45,20 +45,27 @@ def load(base, adapter):
 
 def generate(messages, temperature, max_tokens):
     tok, model = STATE["tok"], STATE["model"]
-    inputs = tok.apply_chat_template(
-        messages, add_generation_prompt=True, return_tensors="pt"
-    ).to(model.device)
-    do_sample = temperature and temperature > 0
+    # transformers 5.x returns a BatchEncoding here (not a bare tensor); ask for a dict
+    # explicitly and splat it into generate so this works across versions.
+    enc = tok.apply_chat_template(
+        messages, add_generation_prompt=True, return_tensors="pt", return_dict=True
+    )
+    enc = {k: v.to(model.device) for k, v in enc.items()}
+    prompt_len = enc["input_ids"].shape[1]
+    do_sample = bool(temperature and temperature > 0)
+    # Only pass sampling params when sampling; some transformers builds reject
+    # temperature=None / top_p=None under greedy decoding.
+    gen_kwargs = dict(
+        max_new_tokens=max_tokens,
+        do_sample=do_sample,
+        pad_token_id=tok.pad_token_id or tok.eos_token_id,
+    )
+    if do_sample:
+        gen_kwargs["temperature"] = temperature
+        gen_kwargs["top_p"] = 0.95
     with torch.no_grad():
-        out = model.generate(
-            inputs,
-            max_new_tokens=max_tokens,
-            do_sample=bool(do_sample),
-            temperature=temperature if do_sample else None,
-            top_p=0.95 if do_sample else None,
-            pad_token_id=tok.pad_token_id or tok.eos_token_id,
-        )
-    return tok.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
+        out = model.generate(**enc, **gen_kwargs)
+    return tok.decode(out[0][prompt_len:], skip_special_tokens=True)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -100,7 +107,9 @@ class Handler(BaseHTTPRequestHandler):
                              "message": {"role": "assistant", "content": content}}],
             })
         except Exception as e:  # never crash the server on one bad request
-            self._send(500, {"error": str(e)})
+            import traceback
+            traceback.print_exc()
+            self._send(500, {"error": repr(e), "trace": traceback.format_exc()[-600:]})
 
 
 def main():
