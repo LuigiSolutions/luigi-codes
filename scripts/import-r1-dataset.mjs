@@ -47,7 +47,8 @@ const CONFIG = {
   config: args.config || 'default',
   split: args.split || 'train',
   target: args.target !== undefined ? Number(args.target) : 900,   // candidate traces to emit
-  maxRows: args['max-rows'] !== undefined ? Number(args['max-rows']) : 6000, // scan cap
+  offsetStart: args['offset-start'] !== undefined ? Number(args['offset-start']) : 0, // skip first N rows (fresh problems)
+  maxRows: args['max-rows'] !== undefined ? Number(args['max-rows']) : 6000, // scan cap (rows scanned past offsetStart)
   maxChars: args['max-chars'] !== undefined ? Number(args['max-chars']) : 14000, // fit the training window
   minChars: args['min-chars'] !== undefined ? Number(args['min-chars']) : 200,
   pageSize: args['page-size'] !== undefined ? Number(args['page-size']) : 100,
@@ -106,7 +107,8 @@ async function main() {
   const bump = (k) => (skip[k] = (skip[k] || 0) + 1);
   let scanned = 0;
 
-  for (let offset = 0; offset < CONFIG.maxRows && emitted.length < CONFIG.target; offset += CONFIG.pageSize) {
+  const endOffset = CONFIG.offsetStart + CONFIG.maxRows;
+  for (let offset = CONFIG.offsetStart; offset < endOffset && emitted.length < CONFIG.target; offset += CONFIG.pageSize) {
     let rows;
     try { rows = await fetchRows(offset); }
     catch (e) { console.error(`  fetch error @ ${offset}: ${(e && e.message) || e}; retrying once`);
