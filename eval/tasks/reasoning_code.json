@@ -1,0 +1,145 @@
+{
+  "suite": "reasoning_code",
+  "tasks": [
+    {
+      "id": "rc-b1-trailing-zeros-factorial",
+      "difficulty": "base",
+      "entryPoint": "trailingZeros",
+      "prompt": "Write a JavaScript function `trailingZeros(n)` that returns the number of trailing zeros in n! (n factorial), for n up to 100000. Computing n! directly overflows, so reason about what produces a trailing zero. Return only the function.",
+      "tests": "{ const got = trailingZeros(0); const exp = 0; if (got !== exp) throw new Error('trailingZeros case 0: expected ' + exp + ' got ' + got); } { const got = trailingZeros(5); const exp = 1; if (got !== exp) throw new Error('trailingZeros case 1: expected ' + exp + ' got ' + got); } { const got = trailingZeros(10); const exp = 2; if (got !== exp) throw new Error('trailingZeros case 2: expected ' + exp + ' got ' + got); } { const got = trailingZeros(25); const exp = 6; if (got !== exp) throw new Error('trailingZeros case 3: expected ' + exp + ' got ' + got); } { const got = trailingZeros(100); const exp = 24; if (got !== exp) throw new Error('trailingZeros case 4: expected ' + exp + ' got ' + got); } { const got = trailingZeros(1000); const exp = 249; if (got !== exp) throw new Error('trailingZeros case 5: expected ' + exp + ' got ' + got); } { const got = trailingZeros(99999); const exp = 24994; if (got !== exp) throw new Error('trailingZeros case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b2-nth-ugly",
+      "difficulty": "base",
+      "entryPoint": "nthUgly",
+      "prompt": "Write a JavaScript function `nthUgly(n)` that returns the nth ugly number (positive integers whose only prime factors are 2, 3, or 5), 1-indexed so nthUgly(1) === 1. Return only the function.",
+      "tests": "{ const got = nthUgly(1); const exp = 1; if (got !== exp) throw new Error('nthUgly case 0: expected ' + exp + ' got ' + got); } { const got = nthUgly(7); const exp = 8; if (got !== exp) throw new Error('nthUgly case 1: expected ' + exp + ' got ' + got); } { const got = nthUgly(10); const exp = 12; if (got !== exp) throw new Error('nthUgly case 2: expected ' + exp + ' got ' + got); } { const got = nthUgly(11); const exp = 15; if (got !== exp) throw new Error('nthUgly case 3: expected ' + exp + ' got ' + got); } { const got = nthUgly(15); const exp = 24; if (got !== exp) throw new Error('nthUgly case 4: expected ' + exp + ' got ' + got); } { const got = nthUgly(50); const exp = 243; if (got !== exp) throw new Error('nthUgly case 5: expected ' + exp + ' got ' + got); } { const got = nthUgly(100); const exp = 1536; if (got !== exp) throw new Error('nthUgly case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b3-count-div-3-or-5",
+      "difficulty": "base",
+      "entryPoint": "countDiv",
+      "prompt": "Write a JavaScript function `countDiv(n)` that returns how many integers in the range 1..n (inclusive) are divisible by 3 or by 5. It must work for n up to 1e12, so a loop over every integer is too slow: reason with inclusion-exclusion. Return only the function.",
+      "tests": "{ const got = countDiv(15); const exp = 7; if (got !== exp) throw new Error('countDiv case 0: expected ' + exp + ' got ' + got); } { const got = countDiv(10); const exp = 5; if (got !== exp) throw new Error('countDiv case 1: expected ' + exp + ' got ' + got); } { const got = countDiv(1); const exp = 0; if (got !== exp) throw new Error('countDiv case 2: expected ' + exp + ' got ' + got); } { const got = countDiv(100); const exp = 47; if (got !== exp) throw new Error('countDiv case 3: expected ' + exp + ' got ' + got); } { const got = countDiv(1000000); const exp = 466667; if (got !== exp) throw new Error('countDiv case 4: expected ' + exp + ' got ' + got); } { const got = countDiv(999999999999); const exp = 466666666666; if (got !== exp) throw new Error('countDiv case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b4-aliquot-sum",
+      "difficulty": "base",
+      "entryPoint": "sumProperDivisors",
+      "prompt": "Write a JavaScript function `sumProperDivisors(n)` that returns the sum of the proper divisors of a positive integer n (all positive divisors excluding n itself); sumProperDivisors(1) === 0, sumProperDivisors(6) === 6. Reason so it runs in about sqrt(n) time using divisor pairing, for n up to 1e7. Return only the function.",
+      "tests": "{ const got = sumProperDivisors(1); const exp = 0; if (got !== exp) throw new Error('sumProperDivisors case 0: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(6); const exp = 6; if (got !== exp) throw new Error('sumProperDivisors case 1: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(12); const exp = 16; if (got !== exp) throw new Error('sumProperDivisors case 2: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(28); const exp = 28; if (got !== exp) throw new Error('sumProperDivisors case 3: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(97); const exp = 1; if (got !== exp) throw new Error('sumProperDivisors case 4: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(10000); const exp = 14211; if (got !== exp) throw new Error('sumProperDivisors case 5: expected ' + exp + ' got ' + got); } { const got = sumProperDivisors(9999991); const exp = 1; if (got !== exp) throw new Error('sumProperDivisors case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b5-lcm-array",
+      "difficulty": "base",
+      "entryPoint": "lcmAll",
+      "prompt": "Write a JavaScript function `lcmAll(nums)` that returns the least common multiple of a non-empty array of positive integers. Reason about how to combine LCMs pairwise via the GCD without overflowing on intermediate products. Return only the function.",
+      "tests": "{ const got = lcmAll([4,6]); const exp = 12; if (got !== exp) throw new Error('lcmAll case 0: expected ' + exp + ' got ' + got); } { const got = lcmAll([1,2,3,4,5,6]); const exp = 60; if (got !== exp) throw new Error('lcmAll case 1: expected ' + exp + ' got ' + got); } { const got = lcmAll([7]); const exp = 7; if (got !== exp) throw new Error('lcmAll case 2: expected ' + exp + ' got ' + got); } { const got = lcmAll([12,15,20]); const exp = 60; if (got !== exp) throw new Error('lcmAll case 3: expected ' + exp + ' got ' + got); } { const got = lcmAll([2,3,5,7,11]); const exp = 2310; if (got !== exp) throw new Error('lcmAll case 4: expected ' + exp + ' got ' + got); } { const got = lcmAll([100,25,8]); const exp = 200; if (got !== exp) throw new Error('lcmAll case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b6-fib-mod",
+      "difficulty": "base",
+      "entryPoint": "fibMod",
+      "prompt": "Write a JavaScript function `fibMod(n, m)` that returns the nth Fibonacci number modulo m, with fibMod(0,m)=0, fibMod(1,m)=1, for n up to 1e6. Reason about keeping numbers small so they never exceed safe-integer range. Return only the function.",
+      "tests": "{ const got = fibMod(0, 1000); const exp = 0; if (got !== exp) throw new Error('fibMod case 0: expected ' + exp + ' got ' + got); } { const got = fibMod(1, 1000); const exp = 1; if (got !== exp) throw new Error('fibMod case 1: expected ' + exp + ' got ' + got); } { const got = fibMod(10, 1000); const exp = 55; if (got !== exp) throw new Error('fibMod case 2: expected ' + exp + ' got ' + got); } { const got = fibMod(50, 1000000); const exp = 269025; if (got !== exp) throw new Error('fibMod case 3: expected ' + exp + ' got ' + got); } { const got = fibMod(100, 1000000007); const exp = 687995182; if (got !== exp) throw new Error('fibMod case 4: expected ' + exp + ' got ' + got); } { const got = fibMod(1000, 97); const exp = 72; if (got !== exp) throw new Error('fibMod case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b7-count-primes-below",
+      "difficulty": "base",
+      "entryPoint": "countPrimesBelow",
+      "prompt": "Write a JavaScript function `countPrimesBelow(n)` that returns how many prime numbers are strictly less than n; countPrimesBelow(2) === 0, countPrimesBelow(10) === 4 (2,3,5,7). Reason about an efficient sieve for n up to 1e6. Return only the function.",
+      "tests": "{ const got = countPrimesBelow(0); const exp = 0; if (got !== exp) throw new Error('countPrimesBelow case 0: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(2); const exp = 0; if (got !== exp) throw new Error('countPrimesBelow case 1: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(3); const exp = 1; if (got !== exp) throw new Error('countPrimesBelow case 2: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(10); const exp = 4; if (got !== exp) throw new Error('countPrimesBelow case 3: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(100); const exp = 25; if (got !== exp) throw new Error('countPrimesBelow case 4: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(1000); const exp = 168; if (got !== exp) throw new Error('countPrimesBelow case 5: expected ' + exp + ' got ' + got); } { const got = countPrimesBelow(200000); const exp = 17984; if (got !== exp) throw new Error('countPrimesBelow case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-b8-perfect-squares",
+      "difficulty": "base",
+      "entryPoint": "countSquares",
+      "prompt": "Write a JavaScript function `countSquares(n)` that returns how many perfect squares are in the range 1..n (inclusive), for n up to 1e14. A loop to n is too slow: reason about the closed form. Return only the function.",
+      "tests": "{ const got = countSquares(1); const exp = 1; if (got !== exp) throw new Error('countSquares case 0: expected ' + exp + ' got ' + got); } { const got = countSquares(4); const exp = 2; if (got !== exp) throw new Error('countSquares case 1: expected ' + exp + ' got ' + got); } { const got = countSquares(15); const exp = 3; if (got !== exp) throw new Error('countSquares case 2: expected ' + exp + ' got ' + got); } { const got = countSquares(16); const exp = 4; if (got !== exp) throw new Error('countSquares case 3: expected ' + exp + ' got ' + got); } { const got = countSquares(100); const exp = 10; if (got !== exp) throw new Error('countSquares case 4: expected ' + exp + ' got ' + got); } { const got = countSquares(100000000000000); const exp = 10000000; if (got !== exp) throw new Error('countSquares case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h1-totient",
+      "difficulty": "hard",
+      "entryPoint": "totient",
+      "prompt": "Write a JavaScript function `totient(n)` that returns Euler's totient of n: the count of integers in 1..n that are coprime to n (share no common factor > 1 with n). Reason via the prime factorization product formula so it is fast for n up to 1e9. Return only the function.",
+      "tests": "{ const got = totient(1); const exp = 1; if (got !== exp) throw new Error('totient case 0: expected ' + exp + ' got ' + got); } { const got = totient(9); const exp = 6; if (got !== exp) throw new Error('totient case 1: expected ' + exp + ' got ' + got); } { const got = totient(10); const exp = 4; if (got !== exp) throw new Error('totient case 2: expected ' + exp + ' got ' + got); } { const got = totient(36); const exp = 12; if (got !== exp) throw new Error('totient case 3: expected ' + exp + ' got ' + got); } { const got = totient(97); const exp = 96; if (got !== exp) throw new Error('totient case 4: expected ' + exp + ' got ' + got); } { const got = totient(1000000); const exp = 400000; if (got !== exp) throw new Error('totient case 5: expected ' + exp + ' got ' + got); } { const got = totient(999999937); const exp = 999999936; if (got !== exp) throw new Error('totient case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h2-josephus",
+      "difficulty": "hard",
+      "entryPoint": "josephus",
+      "prompt": "Write a JavaScript function `josephus(n, k)` that returns the 0-indexed position of the survivor in the Josephus problem: n people stand in a circle and every kth person is eliminated until one remains. Reason about the recurrence. Return only the function.",
+      "tests": "{ const got = josephus(1, 2); const exp = 0; if (got !== exp) throw new Error('josephus case 0: expected ' + exp + ' got ' + got); } { const got = josephus(5, 2); const exp = 2; if (got !== exp) throw new Error('josephus case 1: expected ' + exp + ' got ' + got); } { const got = josephus(7, 3); const exp = 3; if (got !== exp) throw new Error('josephus case 2: expected ' + exp + ' got ' + got); } { const got = josephus(10, 2); const exp = 4; if (got !== exp) throw new Error('josephus case 3: expected ' + exp + ' got ' + got); } { const got = josephus(41, 3); const exp = 30; if (got !== exp) throw new Error('josephus case 4: expected ' + exp + ' got ' + got); } { const got = josephus(100, 7); const exp = 49; if (got !== exp) throw new Error('josephus case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h3-catalan",
+      "difficulty": "hard",
+      "entryPoint": "catalan",
+      "prompt": "Write a JavaScript function `catalan(n)` that returns the nth Catalan number (catalan(0)=1, catalan(1)=1, catalan(2)=2, catalan(3)=5), for n up to 25. Reason about a recurrence or the product form that avoids floating error. Return only the function.",
+      "tests": "{ const got = catalan(0); const exp = 1; if (got !== exp) throw new Error('catalan case 0: expected ' + exp + ' got ' + got); } { const got = catalan(1); const exp = 1; if (got !== exp) throw new Error('catalan case 1: expected ' + exp + ' got ' + got); } { const got = catalan(2); const exp = 2; if (got !== exp) throw new Error('catalan case 2: expected ' + exp + ' got ' + got); } { const got = catalan(3); const exp = 5; if (got !== exp) throw new Error('catalan case 3: expected ' + exp + ' got ' + got); } { const got = catalan(5); const exp = 42; if (got !== exp) throw new Error('catalan case 4: expected ' + exp + ' got ' + got); } { const got = catalan(10); const exp = 16796; if (got !== exp) throw new Error('catalan case 5: expected ' + exp + ' got ' + got); } { const got = catalan(25); const exp = 4861946401452; if (got !== exp) throw new Error('catalan case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h4-modpow",
+      "difficulty": "hard",
+      "entryPoint": "modpow",
+      "prompt": "Write a JavaScript function `modpow(base, exp, m)` that returns (base**exp) % m for non-negative integers with exp up to 1e9 and m up to 1e7. A loop of exp multiplications is far too slow, and base**exp overflows: reason about fast (binary) exponentiation with modular reduction at each step. Return only the function.",
+      "tests": "{ const got = modpow(2, 10, 1000); const exp = 24; if (got !== exp) throw new Error('modpow case 0: expected ' + exp + ' got ' + got); } { const got = modpow(3, 0, 7); const exp = 1; if (got !== exp) throw new Error('modpow case 1: expected ' + exp + ' got ' + got); } { const got = modpow(7, 128, 13); const exp = 3; if (got !== exp) throw new Error('modpow case 2: expected ' + exp + ' got ' + got); } { const got = modpow(10, 9, 9999991); const exp = 900; if (got !== exp) throw new Error('modpow case 3: expected ' + exp + ' got ' + got); } { const got = modpow(123, 456, 789); const exp = 699; if (got !== exp) throw new Error('modpow case 4: expected ' + exp + ' got ' + got); } { const got = modpow(2, 1000000000, 9999991); const exp = 122182; if (got !== exp) throw new Error('modpow case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h5-num-divisors",
+      "difficulty": "hard",
+      "entryPoint": "numDivisors",
+      "prompt": "Write a JavaScript function `numDivisors(n)` that returns the number of positive divisors of n, for n up to 1e12. Reason so it runs in about sqrt(n) time rather than looping to n. Return only the function.",
+      "tests": "{ const got = numDivisors(1); const exp = 1; if (got !== exp) throw new Error('numDivisors case 0: expected ' + exp + ' got ' + got); } { const got = numDivisors(12); const exp = 6; if (got !== exp) throw new Error('numDivisors case 1: expected ' + exp + ' got ' + got); } { const got = numDivisors(36); const exp = 9; if (got !== exp) throw new Error('numDivisors case 2: expected ' + exp + ' got ' + got); } { const got = numDivisors(97); const exp = 2; if (got !== exp) throw new Error('numDivisors case 3: expected ' + exp + ' got ' + got); } { const got = numDivisors(1000000); const exp = 49; if (got !== exp) throw new Error('numDivisors case 4: expected ' + exp + ' got ' + got); } { const got = numDivisors(1000000000000); const exp = 169; if (got !== exp) throw new Error('numDivisors case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h6-lattice-paths",
+      "difficulty": "hard",
+      "entryPoint": "latticePaths",
+      "prompt": "Write a JavaScript function `latticePaths(rows, cols)` that returns the number of distinct paths from the top-left to the bottom-right of a grid with `rows` rows and `cols` columns of cells, moving only right or down. Reason about the combinatorial count. latticePaths(1,1) === 1. Return only the function.",
+      "tests": "{ const got = latticePaths(1, 1); const exp = 1; if (got !== exp) throw new Error('latticePaths case 0: expected ' + exp + ' got ' + got); } { const got = latticePaths(2, 2); const exp = 2; if (got !== exp) throw new Error('latticePaths case 1: expected ' + exp + ' got ' + got); } { const got = latticePaths(2, 3); const exp = 3; if (got !== exp) throw new Error('latticePaths case 2: expected ' + exp + ' got ' + got); } { const got = latticePaths(3, 3); const exp = 6; if (got !== exp) throw new Error('latticePaths case 3: expected ' + exp + ' got ' + got); } { const got = latticePaths(3, 7); const exp = 28; if (got !== exp) throw new Error('latticePaths case 4: expected ' + exp + ' got ' + got); } { const got = latticePaths(10, 10); const exp = 48620; if (got !== exp) throw new Error('latticePaths case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h7-integer-partitions",
+      "difficulty": "hard",
+      "entryPoint": "partitions",
+      "prompt": "Write a JavaScript function `partitions(n)` that returns the number of ways to write the non-negative integer n as a sum of positive integers where order does not matter (partitions(4) === 5: 4, 3+1, 2+2, 2+1+1, 1+1+1+1). partitions(0) === 1. For n up to 60. Return only the function.",
+      "tests": "{ const got = partitions(0); const exp = 1; if (got !== exp) throw new Error('partitions case 0: expected ' + exp + ' got ' + got); } { const got = partitions(1); const exp = 1; if (got !== exp) throw new Error('partitions case 1: expected ' + exp + ' got ' + got); } { const got = partitions(4); const exp = 5; if (got !== exp) throw new Error('partitions case 2: expected ' + exp + ' got ' + got); } { const got = partitions(10); const exp = 42; if (got !== exp) throw new Error('partitions case 3: expected ' + exp + ' got ' + got); } { const got = partitions(30); const exp = 5604; if (got !== exp) throw new Error('partitions case 4: expected ' + exp + ' got ' + got); } { const got = partitions(60); const exp = 966467; if (got !== exp) throw new Error('partitions case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h8-nth-prime",
+      "difficulty": "hard",
+      "entryPoint": "nthPrime",
+      "prompt": "Write a JavaScript function `nthPrime(n)` that returns the nth prime number, 1-indexed so nthPrime(1) === 2, nthPrime(2) === 3. For n up to 2000. Return only the function.",
+      "tests": "{ const got = nthPrime(1); const exp = 2; if (got !== exp) throw new Error('nthPrime case 0: expected ' + exp + ' got ' + got); } { const got = nthPrime(2); const exp = 3; if (got !== exp) throw new Error('nthPrime case 1: expected ' + exp + ' got ' + got); } { const got = nthPrime(5); const exp = 11; if (got !== exp) throw new Error('nthPrime case 2: expected ' + exp + ' got ' + got); } { const got = nthPrime(10); const exp = 29; if (got !== exp) throw new Error('nthPrime case 3: expected ' + exp + ' got ' + got); } { const got = nthPrime(100); const exp = 541; if (got !== exp) throw new Error('nthPrime case 4: expected ' + exp + ' got ' + got); } { const got = nthPrime(2000); const exp = 17389; if (got !== exp) throw new Error('nthPrime case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h9-count-inversions",
+      "difficulty": "hard",
+      "entryPoint": "countInversions",
+      "prompt": "Write a JavaScript function `countInversions(nums)` that returns the number of inversions in the array: pairs of indices i < j with nums[i] > nums[j]. Reason about correctness on duplicates and already-sorted input. Return only the function.",
+      "tests": "{ const got = countInversions([1,2,3]); const exp = 0; if (got !== exp) throw new Error('countInversions case 0: expected ' + exp + ' got ' + got); } { const got = countInversions([3,2,1]); const exp = 3; if (got !== exp) throw new Error('countInversions case 1: expected ' + exp + ' got ' + got); } { const got = countInversions([1,3,2,3,1]); const exp = 4; if (got !== exp) throw new Error('countInversions case 2: expected ' + exp + ' got ' + got); } { const got = countInversions([5,5,5]); const exp = 0; if (got !== exp) throw new Error('countInversions case 3: expected ' + exp + ' got ' + got); } { const got = countInversions([10,1,2,3,4]); const exp = 4; if (got !== exp) throw new Error('countInversions case 4: expected ' + exp + ' got ' + got); } { const got = countInversions([2,4,1,3,5,0]); const exp = 8; if (got !== exp) throw new Error('countInversions case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h10-max-product-subarray",
+      "difficulty": "hard",
+      "entryPoint": "maxProduct",
+      "prompt": "Write a JavaScript function `maxProduct(nums)` that returns the maximum product of any contiguous non-empty subarray of the integer array `nums`. Reason carefully about how negative numbers and zeros flip the running maximum and minimum. Return only the function.",
+      "tests": "{ const got = maxProduct([2,3,-2,4]); const exp = 6; if (got !== exp) throw new Error('maxProduct case 0: expected ' + exp + ' got ' + got); } { const got = maxProduct([-2,0,-1]); const exp = 0; if (got !== exp) throw new Error('maxProduct case 1: expected ' + exp + ' got ' + got); } { const got = maxProduct([-2,3,-4]); const exp = 24; if (got !== exp) throw new Error('maxProduct case 2: expected ' + exp + ' got ' + got); } { const got = maxProduct([0,2]); const exp = 2; if (got !== exp) throw new Error('maxProduct case 3: expected ' + exp + ' got ' + got); } { const got = maxProduct([-1,-2,-3,0]); const exp = 6; if (got !== exp) throw new Error('maxProduct case 4: expected ' + exp + ' got ' + got); } { const got = maxProduct([2,-5,-2,-4,3]); const exp = 24; if (got !== exp) throw new Error('maxProduct case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h11-coin-combinations",
+      "difficulty": "hard",
+      "entryPoint": "coinWays",
+      "prompt": "Write a JavaScript function `coinWays(coins, amount)` that returns the number of distinct combinations of the given coin denominations (each usable unlimited times) that sum to exactly `amount`; combinations differing only in order count once. coinWays([1,2,5], 5) === 4. coinWays([2], 3) === 0. coinWays([], 0) === 1. Return only the function.",
+      "tests": "{ const got = coinWays([1,2,5], 5); const exp = 4; if (got !== exp) throw new Error('coinWays case 0: expected ' + exp + ' got ' + got); } { const got = coinWays([2], 3); const exp = 0; if (got !== exp) throw new Error('coinWays case 1: expected ' + exp + ' got ' + got); } { const got = coinWays([], 0); const exp = 1; if (got !== exp) throw new Error('coinWays case 2: expected ' + exp + ' got ' + got); } { const got = coinWays([1], 0); const exp = 1; if (got !== exp) throw new Error('coinWays case 3: expected ' + exp + ' got ' + got); } { const got = coinWays([1,2,3], 4); const exp = 4; if (got !== exp) throw new Error('coinWays case 4: expected ' + exp + ' got ' + got); } { const got = coinWays([2,3,5,7], 20); const exp = 18; if (got !== exp) throw new Error('coinWays case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h12-collatz-steps",
+      "difficulty": "hard",
+      "entryPoint": "collatzSteps",
+      "prompt": "Write a JavaScript function `collatzSteps(n)` that returns the number of steps to reach 1 from a positive integer n under the Collatz map (n -> n/2 if even, else 3n+1); collatzSteps(1) === 0. Values can exceed n mid-sequence, so do not assume monotonic decrease. For n up to 1e6. Return only the function.",
+      "tests": "{ const got = collatzSteps(1); const exp = 0; if (got !== exp) throw new Error('collatzSteps case 0: expected ' + exp + ' got ' + got); } { const got = collatzSteps(2); const exp = 1; if (got !== exp) throw new Error('collatzSteps case 1: expected ' + exp + ' got ' + got); } { const got = collatzSteps(6); const exp = 8; if (got !== exp) throw new Error('collatzSteps case 2: expected ' + exp + ' got ' + got); } { const got = collatzSteps(27); const exp = 111; if (got !== exp) throw new Error('collatzSteps case 3: expected ' + exp + ' got ' + got); } { const got = collatzSteps(97); const exp = 118; if (got !== exp) throw new Error('collatzSteps case 4: expected ' + exp + ' got ' + got); } { const got = collatzSteps(999999); const exp = 258; if (got !== exp) throw new Error('collatzSteps case 5: expected ' + exp + ' got ' + got); }"
+    }
+  ]
+}

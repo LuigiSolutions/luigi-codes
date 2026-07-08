@@ -66,7 +66,7 @@ function jaccard(aWords, bWords) {
 
 function loadEvalPrompts() {
   const out = [];
-  for (const name of ['reasoning.json', 'coding.json']) {
+  for (const name of ['reasoning.json', 'coding.json', 'reasoning_code.json']) {
     const p = join(CONFIG.tasksDir, name);
     if (!existsSync(p)) continue;
     const j = JSON.parse(readFileSync(p, 'utf8'));

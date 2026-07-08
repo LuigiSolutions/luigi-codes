@@ -62,7 +62,7 @@ const CONFIG = {
   // an otherwise deterministic (temp 0) score. 120s removes that artifact so baseline and
   // candidate are compared on reasoning, not machine load.
   timeoutMs: args.timeout !== undefined ? Number(args.timeout) : 120000,
-  suite: args.suite || 'all',            // coding | reasoning | all
+  suite: args.suite || 'all',            // coding | reasoning_code | reasoning | all
   difficulty: args.difficulty || 'all',  // all | base | hard
   strategy: args.strategy || 'single',   // single | self-consistency
   samples: args.samples !== undefined ? Number(args.samples) : 5,
@@ -206,6 +206,32 @@ async function runCoding() {
     results.push({ id: t.id, difficulty: t.difficulty, passed, detail });
   }
   return { suite: 'coding', strategy: 'single', results };
+}
+
+async function runReasoningCode() {
+  // Reasoning-with-code: the answer requires a derivation/insight, delivered as an
+  // executable function and scored by execution (like coding). Ground truth is
+  // double-derived + gameability-checked by scripts/build-reasoning-code-suite.mjs.
+  const tasks = selectTasks(loadSuite('reasoning_code'));
+  const results = [];
+  for (const t of tasks) {
+    process.stdout.write(`  [reasoning_code/${t.difficulty}] ${t.id} ... `);
+    let passed = false, detail = '';
+    try {
+      const out = await callModel([
+        { role: 'system', content: 'You are a precise JavaScript engineer. Reason through what the problem requires, then return the solution as a single fenced JavaScript code block containing only the function.' },
+        { role: 'user', content: t.prompt },
+      ]);
+      const code = extractCode(out);
+      if (CONFIG.dryRun) { detail = 'dry-run (not executed)'; }
+      else { const r = runJs(code, t.tests); passed = r.ok; detail = r.detail; }
+    } catch (err) {
+      detail = (err && err.message) || String(err);
+    }
+    console.log(passed ? 'PASS' : (CONFIG.dryRun ? 'GEN' : `FAIL${detail ? ' (' + detail + ')' : ''}`));
+    results.push({ id: t.id, difficulty: t.difficulty, passed, detail });
+  }
+  return { suite: 'reasoning_code', strategy: 'single', results };
 }
 
 async function runReasoning() {
@@ -366,6 +392,10 @@ function runSelftest() {
     check('every reasoning task has answer + type', rj.tasks.every((t) => t.answer !== undefined && (t.type === 'number' || t.type === 'text')));
     check('no duplicate reasoning ids', new Set(rj.tasks.map((t) => t.id)).size === rj.tasks.length);
     check('coding suite loads', Array.isArray(cj.tasks) && cj.tasks.length > 0);
+    const rcj = JSON.parse(readFileSync(join(TASKS_DIR, 'reasoning_code.json'), 'utf8'));
+    check('reasoning_code suite >= 20', Array.isArray(rcj.tasks) && rcj.tasks.length >= 20);
+    check('reasoning_code tasks have entryPoint + tests', rcj.tasks.every((t) => t.entryPoint && typeof t.tests === 'string' && t.tests.length > 0));
+    check('no duplicate reasoning_code ids', new Set(rcj.tasks.map((t) => t.id)).size === rcj.tasks.length);
   } catch {
     check('task files parse', false);
   }
@@ -390,6 +420,7 @@ async function main() {
 
   const runs = [];
   if (CONFIG.suite === 'coding' || CONFIG.suite === 'all') runs.push(await runCoding());
+  if (CONFIG.suite === 'reasoning_code' || CONFIG.suite === 'all') runs.push(await runReasoningCode());
   if (CONFIG.suite === 'reasoning' || CONFIG.suite === 'all') runs.push(await runReasoning());
 
   const { jsonPath, mdPath, summaries } = writeReport(runs);
