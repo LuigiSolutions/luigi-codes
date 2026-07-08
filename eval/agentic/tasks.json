@@ -1,0 +1,79 @@
+{
+  "suite": "agentic",
+  "note": "Each task runs the REAL 5-phase agent loop against a scratch workspace root. Files are CommonJS (module.exports) so `check` can require() them. The workspace is reset before every task. check.code runs via node with cwd = workspace root; it throws on failure (exit != 0 = FAIL).",
+  "tasks": [
+    {
+      "id": "ag-01-create-add",
+      "difficulty": "base",
+      "prompt": "Create a file named math.js in the workspace root. Assign the export as `module.exports.add = function(a, b) { ... }` so that require('./math.js').add(2, 3) returns 5. Do not add anything else.",
+      "setup": [],
+      "check": "const m = require('./math.js'); if (typeof m.add !== 'function') throw new Error('no add export'); if (m.add(2,3) !== 5) throw new Error('add(2,3) != 5'); if (m.add(-1,1) !== 0) throw new Error('add(-1,1) != 0');"
+    },
+    {
+      "id": "ag-02-fix-greet",
+      "difficulty": "base",
+      "prompt": "The file greet.js has a bug: greet('Sam') must return exactly the string 'Hello, Sam' (the word Hello, a comma, a space, then the name). Fix greet.js so it returns the correct format. Keep it CommonJS.",
+      "setup": [{ "path": "greet.js", "content": "module.exports.greet = function greet(name) {\n  return 'Hello ' + name;\n};\n" }],
+      "check": "const { greet } = require('./greet.js'); const got = greet('Sam'); if (got !== 'Hello, Sam') throw new Error('got ' + JSON.stringify(got));"
+    },
+    {
+      "id": "ag-03-add-reverse",
+      "difficulty": "base",
+      "prompt": "Add reverse(s) to strings.js as `module.exports.reverse = function(s) { ... }` returning the input string reversed. Keep the existing module.exports.upper working. Use CommonJS.",
+      "setup": [{ "path": "strings.js", "content": "module.exports.upper = function upper(s) {\n  return String(s).toUpperCase();\n};\n" }],
+      "check": "const s = require('./strings.js'); if (s.upper('ab') !== 'AB') throw new Error('upper broke'); if (typeof s.reverse !== 'function') throw new Error('no reverse'); if (s.reverse('abc') !== 'cba') throw new Error('reverse wrong');"
+    },
+    {
+      "id": "ag-04-iseven",
+      "difficulty": "base",
+      "prompt": "Create numbers.js in the workspace root. Assign the export as `module.exports.isEven = function(n) { ... }` so require('./numbers.js').isEven(n) returns true when n is even and false otherwise.",
+      "setup": [],
+      "check": "const { isEven } = require('./numbers.js'); if (isEven(4) !== true) throw new Error('4 even'); if (isEven(3) !== false) throw new Error('3 odd'); if (isEven(0) !== true) throw new Error('0 even');"
+    },
+    {
+      "id": "ag-05-json-config",
+      "difficulty": "base",
+      "prompt": "Create a file config.json in the workspace root containing a JSON object with a key \"version\" whose value is the string \"1.0.0\".",
+      "setup": [],
+      "check": "const fs = require('fs'); const c = JSON.parse(fs.readFileSync('config.json','utf8')); if (c.version !== '1.0.0') throw new Error('version = ' + JSON.stringify(c.version));"
+    },
+    {
+      "id": "ag-06-fix-to-pass-test",
+      "difficulty": "hard",
+      "prompt": "sum.js should export a function sum(nums) that returns the total of an array of numbers, but it is wrong. Read sum.test.js to see the expected behavior, then fix sum.js so the assertions in sum.test.js all pass. Keep CommonJS.",
+      "setup": [
+        { "path": "sum.js", "content": "module.exports.sum = function sum(nums) {\n  return nums[0];\n};\n" },
+        { "path": "sum.test.js", "content": "const { sum } = require('./sum.js');\nif (sum([1,2,3]) !== 6) throw new Error('sum([1,2,3]) should be 6');\nif (sum([]) !== 0) throw new Error('sum([]) should be 0');\nif (sum([5]) !== 5) throw new Error('sum([5]) should be 5');\nconsole.log('ok');\n" }
+      ],
+      "check": "const { sum } = require('./sum.js'); if (sum([1,2,3]) !== 6) throw new Error('1,2,3'); if (sum([]) !== 0) throw new Error('empty'); if (sum([5]) !== 5) throw new Error('single');"
+    },
+    {
+      "id": "ag-07-fib-iterative",
+      "difficulty": "hard",
+      "prompt": "Create fib.js in the workspace root. Assign the export as `module.exports.fib = function(n) { ... }` so require('./fib.js').fib(n) gives the nth Fibonacci number: fib(0) is 0, fib(1) is 1, fib(n) = fib(n-1) + fib(n-2). Implement it iteratively so it is fast for n up to 1000 (do not use naive recursion). fib(10) is 55.",
+      "setup": [],
+      "check": "const { fib } = require('./fib.js'); if (fib(0)!==0||fib(1)!==1) throw new Error('base'); if (fib(10)!==55) throw new Error('fib(10)'); const t=Date.now(); fib(1000); if (Date.now()-t > 1000) throw new Error('too slow (naive recursion?)');"
+    },
+    {
+      "id": "ag-08-refactor-keep-behavior",
+      "difficulty": "hard",
+      "prompt": "calc.js exports add and sub with duplicated validation. Refactor it so the validation is not duplicated, while keeping add(a,b) and sub(a,b) behaving exactly as before (they throw a TypeError if either argument is not a number). Keep CommonJS.",
+      "setup": [{ "path": "calc.js", "content": "module.exports.add = function add(a, b) {\n  if (typeof a !== 'number' || typeof b !== 'number') throw new TypeError('numbers only');\n  return a + b;\n};\nmodule.exports.sub = function sub(a, b) {\n  if (typeof a !== 'number' || typeof b !== 'number') throw new TypeError('numbers only');\n  return a - b;\n};\n" }],
+      "check": "const c = require('./calc.js'); if (c.add(2,3)!==5||c.sub(5,2)!==3) throw new Error('behavior'); let threw=false; try{c.add('x',1);}catch(e){threw = e instanceof TypeError;} if(!threw) throw new Error('should throw TypeError');"
+    },
+    {
+      "id": "ag-09-multi-file",
+      "difficulty": "hard",
+      "prompt": "Create two files (CommonJS). lib/parse.js: `module.exports.parseCsvLine = function(line) { ... }` splitting a string on commas into an array of fields. index.js: require ./lib/parse.js and set `module.exports.fieldCount = function(line) { ... }` returning the number of fields in line. Create the lib directory as needed.",
+      "setup": [],
+      "check": "const { fieldCount } = require('./index.js'); if (fieldCount('a,b,c') !== 3) throw new Error('3 fields'); if (fieldCount('x') !== 1) throw new Error('1 field'); const p = require('./lib/parse.js'); if (JSON.stringify(p.parseCsvLine('a,b')) !== '[\"a\",\"b\"]') throw new Error('parse');"
+    },
+    {
+      "id": "ag-10-clamp-edges",
+      "difficulty": "hard",
+      "prompt": "Create clamp.js in the workspace root. Assign the export as `module.exports.clamp = function(x, lo, hi) { ... }` so require('./clamp.js').clamp returns lo if x < lo, hi if x > hi, otherwise x. Handle boundaries correctly (clamp(5,0,10) is 5, clamp(-1,0,10) is 0, clamp(99,0,10) is 10).",
+      "setup": [],
+      "check": "const { clamp } = require('./clamp.js'); if (clamp(5,0,10)!==5) throw new Error('mid'); if (clamp(-1,0,10)!==0) throw new Error('lo'); if (clamp(99,0,10)!==10) throw new Error('hi'); if (clamp(0,0,10)!==0||clamp(10,0,10)!==10) throw new Error('edges');"
+    }
+  ]
+}

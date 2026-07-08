@@ -21,7 +21,7 @@ import json
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from mlx_lm import load, generate
+from mlx_lm import load, generate, stream_generate
 from mlx_lm.sample_utils import make_sampler
 
 STATE = {"model": None, "tok": None, "name": "luigi-mlx"}
@@ -57,11 +57,35 @@ class Handler(BaseHTTPRequestHandler):
                 req.get("messages", []), add_generation_prompt=True, tokenize=False
             )
             temp = float(req.get("temperature", 0) or 0)
+            max_tokens = int(req.get("max_tokens", 1024))
+            sampler = make_sampler(temp=temp)
+            # The product's ModelRouter talks to OpenAI-style endpoints with stream:true
+            # (SSE). Support it so the real agent loop works against this server, not just
+            # the non-streaming eval harness. Fall back to a single JSON body otherwise.
+            if req.get("stream"):
+                self.send_response(200)
+                self.send_header("content-type", "text/event-stream")
+                self.send_header("cache-control", "no-cache")
+                self.end_headers()
+                created = int(time.time())
+                for resp in stream_generate(STATE["model"], tok, prompt=prompt, max_tokens=max_tokens, sampler=sampler):
+                    chunk = {
+                        "id": "chatcmpl-mlx", "object": "chat.completion.chunk", "created": created,
+                        "model": req.get("model", STATE["name"]),
+                        "choices": [{"index": 0, "delta": {"content": resp.text}, "finish_reason": None}],
+                    }
+                    self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+                done = {
+                    "id": "chatcmpl-mlx", "object": "chat.completion.chunk", "created": created,
+                    "model": req.get("model", STATE["name"]),
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                }
+                self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
+                self.wfile.write(b"data: [DONE]\n\n")
+                return
             content = generate(
                 STATE["model"], tok, prompt=prompt,
-                max_tokens=int(req.get("max_tokens", 1024)),
-                sampler=make_sampler(temp=temp),
-                verbose=False,
+                max_tokens=max_tokens, sampler=sampler, verbose=False,
             )
             self._send(200, {
                 "id": "chatcmpl-mlx", "object": "chat.completion", "created": int(time.time()),

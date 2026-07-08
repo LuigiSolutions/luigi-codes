@@ -208,6 +208,7 @@
     "test": "node ./out/test/runTest.js",
     "web": "node ./out/web/standalone.js",
     "eval": "node scripts/eval.mjs",
+    "eval:agentic": "npm run compile && node ./out/test/runAgenticEval.js",
     "gen:traces": "node scripts/gen-traces.mjs",
     "import:r1": "node scripts/import-r1-dataset.mjs",
     "filter:traces": "node scripts/filter-traces.mjs",
