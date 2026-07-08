@@ -67,6 +67,11 @@ const CONFIG = {
   strategy: args.strategy || 'single',   // single | self-consistency
   samples: args.samples !== undefined ? Number(args.samples) : 5,
   limit: args.limit !== undefined ? Number(args.limit) : Infinity,
+  // Never-seen holdout (Phase 0.5): tasks tagged `holdout: true` are EXCLUDED by default, so the
+  // self-improvement loop and hyperparameter selection never optimize against them. The final
+  // consolidated promote re-run passes --include-holdout; --holdout-only runs the reserve alone.
+  includeHoldout: Boolean(args['include-holdout']),
+  holdoutOnly: Boolean(args['holdout-only']),
   dryRun: Boolean(args['dry-run']),
   label: args.label || '',
   explicitTemp,
@@ -178,6 +183,8 @@ function loadSuite(name) {
 
 function selectTasks(suite) {
   let tasks = suite.tasks.map((t) => ({ difficulty: 'base', ...t }));
+  if (CONFIG.holdoutOnly) tasks = tasks.filter((t) => t.holdout === true);
+  else if (!CONFIG.includeHoldout) tasks = tasks.filter((t) => t.holdout !== true);
   if (CONFIG.difficulty !== 'all') tasks = tasks.filter((t) => t.difficulty === CONFIG.difficulty);
   if (Number.isFinite(CONFIG.limit)) tasks = tasks.slice(0, CONFIG.limit);
   return tasks;
@@ -392,10 +399,21 @@ function runSelftest() {
     check('every reasoning task has answer + type', rj.tasks.every((t) => t.answer !== undefined && (t.type === 'number' || t.type === 'text')));
     check('no duplicate reasoning ids', new Set(rj.tasks.map((t) => t.id)).size === rj.tasks.length);
     check('coding suite loads', Array.isArray(cj.tasks) && cj.tasks.length > 0);
+    check('no duplicate coding ids', new Set(cj.tasks.map((t) => t.id)).size === cj.tasks.length);
     const rcj = JSON.parse(readFileSync(join(TASKS_DIR, 'reasoning_code.json'), 'utf8'));
     check('reasoning_code suite >= 20', Array.isArray(rcj.tasks) && rcj.tasks.length >= 20);
     check('reasoning_code tasks have entryPoint + tests', rcj.tasks.every((t) => t.entryPoint && typeof t.tests === 'string' && t.tests.length > 0));
     check('no duplicate reasoning_code ids', new Set(rcj.tasks.map((t) => t.id)).size === rcj.tasks.length);
+    // Phase 0.5 invariants: >= 15 VISIBLE (non-holdout) hard coding tasks, and each capability
+    // suite reserves >= 1 never-seen holdout. Default runs exclude holdout; --include-holdout re-adds.
+    const visibleHard = cj.tasks.filter((t) => t.difficulty === 'hard' && t.holdout !== true).length;
+    check('coding visible hard tier >= 15', visibleHard >= 15);
+    check('coding suite reserves a holdout', cj.tasks.some((t) => t.holdout === true));
+    check('reasoning_code suite reserves a holdout', rcj.tasks.some((t) => t.holdout === true));
+    check('reasoning suite reserves a holdout', rj.tasks.some((t) => t.holdout === true));
+    // The default selector must EXCLUDE holdout (so the self-improve loop never optimizes it).
+    const defaultSel = cj.tasks.filter((t) => t.holdout !== true);
+    check('holdout excluded from default coding selection', defaultSel.every((t) => t.holdout !== true) && defaultSel.length < cj.tasks.length);
   } catch {
     check('task files parse', false);
   }

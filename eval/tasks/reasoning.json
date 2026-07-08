@@ -435,6 +435,30 @@
       "prompt": "A password is 4 characters long, where each character is either a digit (0 to 9) or an uppercase letter (A to Z). How many such passwords contain at least one digit and at least one letter? End with a line 'Final answer: X'.",
       "answer": "1212640",
       "type": "number"
+    },
+    {
+      "id": "reason-hold1-div3or5",
+      "difficulty": "expert",
+      "holdout": true,
+      "prompt": "How many positive integers strictly less than 1000 are divisible by 3 or by 5? End with a line 'Final answer: X'.",
+      "answer": "466",
+      "type": "number"
+    },
+    {
+      "id": "reason-hold2-modpow",
+      "difficulty": "expert",
+      "holdout": true,
+      "prompt": "What is the remainder when 7^100 is divided by 13? End with a line 'Final answer: X'.",
+      "answer": "9",
+      "type": "number"
+    },
+    {
+      "id": "reason-hold3-arith-series",
+      "difficulty": "expert",
+      "holdout": true,
+      "prompt": "Consider the arithmetic sequence whose first term is 4 and whose common difference is 6 (so 4, 10, 16, ...). What is the sum of its first 20 terms? End with a line 'Final answer: X'.",
+      "answer": "1220",
+      "type": "number"
     }
   ]
 }

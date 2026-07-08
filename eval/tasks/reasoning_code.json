@@ -161,6 +161,30 @@
       "entryPoint": "eggDrop",
       "prompt": "Write a JavaScript function `eggDrop(eggs, floors)` that returns the minimum number of trials that GUARANTEES finding the highest safe floor in the worst case, given `eggs` identical eggs and a building of `floors` floors (an egg that survives a drop can be reused; a broken egg cannot). eggDrop(1, 10) === 10, eggDrop(2, 10) === 4. Reason about the trade-off, not a plain binary search. Return only the function.",
       "tests": "{ const got = eggDrop(1, 10); const exp = 10; if (got !== exp) throw new Error('eggDrop case 0: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 10); const exp = 4; if (got !== exp) throw new Error('eggDrop case 1: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 36); const exp = 8; if (got !== exp) throw new Error('eggDrop case 2: expected ' + exp + ' got ' + got); } { const got = eggDrop(3, 14); const exp = 4; if (got !== exp) throw new Error('eggDrop case 3: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 100); const exp = 14; if (got !== exp) throw new Error('eggDrop case 4: expected ' + exp + ' got ' + got); } { const got = eggDrop(3, 200); const exp = 11; if (got !== exp) throw new Error('eggDrop case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-hold1-josephus",
+      "difficulty": "hard",
+      "holdout": true,
+      "entryPoint": "josephus",
+      "prompt": "Write a JavaScript function `josephus(n, k)` that returns the 1-indexed position of the survivor in the Josephus problem: n people stand in a circle numbered 1..n, and every k-th person is eliminated (counting starts at person 1) until one remains. Return only the function.",
+      "tests": "{ const got = josephus(1,1); const exp = 1; if (got !== exp) throw new Error('josephus case 0: expected ' + exp + ' got ' + got); } { const got = josephus(5,2); const exp = 3; if (got !== exp) throw new Error('josephus case 1: expected ' + exp + ' got ' + got); } { const got = josephus(7,3); const exp = 4; if (got !== exp) throw new Error('josephus case 2: expected ' + exp + ' got ' + got); } { const got = josephus(10,2); const exp = 5; if (got !== exp) throw new Error('josephus case 3: expected ' + exp + ' got ' + got); } { const got = josephus(41,3); const exp = 31; if (got !== exp) throw new Error('josephus case 4: expected ' + exp + ' got ' + got); } { const got = josephus(6,4); const exp = 5; if (got !== exp) throw new Error('josephus case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-hold2-nth-ugly",
+      "difficulty": "hard",
+      "holdout": true,
+      "entryPoint": "nthUgly",
+      "prompt": "Write a JavaScript function `nthUgly(n)` that returns the nth ugly number (1-indexed). Ugly numbers are positive integers whose only prime factors are 2, 3, or 5. By convention 1 is the first ugly number. Return only the function.",
+      "tests": "{ const got = nthUgly(1); const exp = 1; if (got !== exp) throw new Error('nthUgly case 0: expected ' + exp + ' got ' + got); } { const got = nthUgly(7); const exp = 8; if (got !== exp) throw new Error('nthUgly case 1: expected ' + exp + ' got ' + got); } { const got = nthUgly(10); const exp = 12; if (got !== exp) throw new Error('nthUgly case 2: expected ' + exp + ' got ' + got); } { const got = nthUgly(11); const exp = 15; if (got !== exp) throw new Error('nthUgly case 3: expected ' + exp + ' got ' + got); } { const got = nthUgly(15); const exp = 24; if (got !== exp) throw new Error('nthUgly case 4: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-hold3-collatz-steps",
+      "difficulty": "hard",
+      "holdout": true,
+      "entryPoint": "collatzSteps",
+      "prompt": "Write a JavaScript function `collatzSteps(n)` that returns how many steps it takes to reach 1 from n under the Collatz process: if the current value is even, halve it; if odd, triple it and add one. collatzSteps(1) is 0. Return only the function.",
+      "tests": "{ const got = collatzSteps(1); const exp = 0; if (got !== exp) throw new Error('collatzSteps case 0: expected ' + exp + ' got ' + got); } { const got = collatzSteps(6); const exp = 8; if (got !== exp) throw new Error('collatzSteps case 1: expected ' + exp + ' got ' + got); } { const got = collatzSteps(7); const exp = 16; if (got !== exp) throw new Error('collatzSteps case 2: expected ' + exp + ' got ' + got); } { const got = collatzSteps(27); const exp = 111; if (got !== exp) throw new Error('collatzSteps case 3: expected ' + exp + ' got ' + got); } { const got = collatzSteps(97); const exp = 118; if (got !== exp) throw new Error('collatzSteps case 4: expected ' + exp + ' got ' + got); }"
     }
   ]
 }
