@@ -140,6 +140,27 @@
       "entryPoint": "collatzSteps",
       "prompt": "Write a JavaScript function `collatzSteps(n)` that returns the number of steps to reach 1 from a positive integer n under the Collatz map (n -> n/2 if even, else 3n+1); collatzSteps(1) === 0. Values can exceed n mid-sequence, so do not assume monotonic decrease. For n up to 1e6. Return only the function.",
       "tests": "{ const got = collatzSteps(1); const exp = 0; if (got !== exp) throw new Error('collatzSteps case 0: expected ' + exp + ' got ' + got); } { const got = collatzSteps(2); const exp = 1; if (got !== exp) throw new Error('collatzSteps case 1: expected ' + exp + ' got ' + got); } { const got = collatzSteps(6); const exp = 8; if (got !== exp) throw new Error('collatzSteps case 2: expected ' + exp + ' got ' + got); } { const got = collatzSteps(27); const exp = 111; if (got !== exp) throw new Error('collatzSteps case 3: expected ' + exp + ' got ' + got); } { const got = collatzSteps(97); const exp = 118; if (got !== exp) throw new Error('collatzSteps case 4: expected ' + exp + ' got ' + got); } { const got = collatzSteps(999999); const exp = 258; if (got !== exp) throw new Error('collatzSteps case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h13-derangements",
+      "difficulty": "hard",
+      "entryPoint": "derangements",
+      "prompt": "Write a JavaScript function `derangements(n)` that returns the number of permutations of n distinct items with NO item in its original position (the subfactorial); derangements(0) === 1, derangements(1) === 0, derangements(2) === 1, derangements(4) === 9. For n up to 15. Reason about a recurrence or the inclusion-exclusion form. Return only the function.",
+      "tests": "{ const got = derangements(0); const exp = 1; if (got !== exp) throw new Error('derangements case 0: expected ' + exp + ' got ' + got); } { const got = derangements(1); const exp = 0; if (got !== exp) throw new Error('derangements case 1: expected ' + exp + ' got ' + got); } { const got = derangements(2); const exp = 1; if (got !== exp) throw new Error('derangements case 2: expected ' + exp + ' got ' + got); } { const got = derangements(3); const exp = 2; if (got !== exp) throw new Error('derangements case 3: expected ' + exp + ' got ' + got); } { const got = derangements(4); const exp = 9; if (got !== exp) throw new Error('derangements case 4: expected ' + exp + ' got ' + got); } { const got = derangements(10); const exp = 1334961; if (got !== exp) throw new Error('derangements case 5: expected ' + exp + ' got ' + got); } { const got = derangements(15); const exp = 481066515734; if (got !== exp) throw new Error('derangements case 6: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h14-modinverse",
+      "difficulty": "hard",
+      "entryPoint": "modInverse",
+      "prompt": "Write a JavaScript function `modInverse(a, m)` that returns the modular multiplicative inverse of a modulo m (the x in 0..m-1 with (a*x) % m === 1), where m is prime and a is not a multiple of m, for m up to 1e6. A brute search to m is too slow: reason about the extended Euclidean algorithm or Fermat little theorem. Return only the function.",
+      "tests": "{ const got = modInverse(3, 7); const exp = 5; if (got !== exp) throw new Error('modInverse case 0: expected ' + exp + ' got ' + got); } { const got = modInverse(10, 17); const exp = 12; if (got !== exp) throw new Error('modInverse case 1: expected ' + exp + ' got ' + got); } { const got = modInverse(7, 13); const exp = 2; if (got !== exp) throw new Error('modInverse case 2: expected ' + exp + ' got ' + got); } { const got = modInverse(5, 101); const exp = 81; if (got !== exp) throw new Error('modInverse case 3: expected ' + exp + ' got ' + got); } { const got = modInverse(123, 999983); const exp = 715435; if (got !== exp) throw new Error('modInverse case 4: expected ' + exp + ' got ' + got); } { const got = modInverse(2, 1000003); const exp = 500002; if (got !== exp) throw new Error('modInverse case 5: expected ' + exp + ' got ' + got); }"
+    },
+    {
+      "id": "rc-h15-egg-drop",
+      "difficulty": "hard",
+      "entryPoint": "eggDrop",
+      "prompt": "Write a JavaScript function `eggDrop(eggs, floors)` that returns the minimum number of trials that GUARANTEES finding the highest safe floor in the worst case, given `eggs` identical eggs and a building of `floors` floors (an egg that survives a drop can be reused; a broken egg cannot). eggDrop(1, 10) === 10, eggDrop(2, 10) === 4. Reason about the trade-off, not a plain binary search. Return only the function.",
+      "tests": "{ const got = eggDrop(1, 10); const exp = 10; if (got !== exp) throw new Error('eggDrop case 0: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 10); const exp = 4; if (got !== exp) throw new Error('eggDrop case 1: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 36); const exp = 8; if (got !== exp) throw new Error('eggDrop case 2: expected ' + exp + ' got ' + got); } { const got = eggDrop(3, 14); const exp = 4; if (got !== exp) throw new Error('eggDrop case 3: expected ' + exp + ' got ' + got); } { const got = eggDrop(2, 100); const exp = 14; if (got !== exp) throw new Error('eggDrop case 4: expected ' + exp + ' got ' + got); } { const got = eggDrop(3, 200); const exp = 11; if (got !== exp) throw new Error('eggDrop case 5: expected ' + exp + ' got ' + got); }"
     }
   ]
 }

@@ -224,6 +224,35 @@ const TASKS = [
       return go(n); },
     wrong: 'function collatzSteps(n){let c=0;while(n>1){if(n%2===0)n/=2;else n=3*n+1;if(n<1)break;}return c;}',
   },
+  {
+    id: 'rc-h13-derangements', difficulty: 'hard', entryPoint: 'derangements',
+    prompt: 'Write a JavaScript function `derangements(n)` that returns the number of permutations of n distinct items with NO item in its original position (the subfactorial); derangements(0) === 1, derangements(1) === 0, derangements(2) === 1, derangements(4) === 9. For n up to 15. Reason about a recurrence or the inclusion-exclusion form. Return only the function.',
+    inputs: [[0], [1], [2], [3], [4], [10], [15]],
+    ref: (n) => { if (n === 0) return 1; if (n === 1) return 0; let a = 1, b = 0; for (let i = 2; i <= n; i++) { const c = (i - 1) * (a + b); a = b; b = c; } return b; },
+    ref2: (n) => { // inclusion-exclusion with BigInt: D(n) = sum_{k=0}^n (-1)^k n!/k!
+      const N = BigInt(n); const fact = [1n]; for (let i = 1n; i <= N; i++) fact.push(fact[fact.length - 1] * i);
+      let sum = 0n; for (let k = 0; k <= n; k++) { const term = fact[n] / fact[k]; sum += (k % 2 === 0 ? 1n : -1n) * term; } return Number(sum); },
+    wrong: 'function derangements(n){let f=1;for(let i=2;i<=n;i++)f*=i;return Math.round(f/Math.E);}',
+  },
+  {
+    id: 'rc-h14-modinverse', difficulty: 'hard', entryPoint: 'modInverse',
+    prompt: 'Write a JavaScript function `modInverse(a, m)` that returns the modular multiplicative inverse of a modulo m (the x in 0..m-1 with (a*x) % m === 1), where m is prime and a is not a multiple of m, for m up to 1e6. A brute search to m is too slow: reason about the extended Euclidean algorithm or Fermat little theorem. Return only the function.',
+    inputs: [[3, 7], [10, 17], [7, 13], [5, 101], [123, 999983], [2, 1000003]],
+    ref: (a, m) => { let [or, r] = [a % m, m], [os, s] = [1, 0]; while (r !== 0) { const q = Math.floor(or / r); [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return ((os % m) + m) % m; },
+    ref2: (a, m) => { // Fermat: a^(m-2) mod m for prime m (independent of extended Euclid)
+      let e = m - 2, base = a % m, res = 1; while (e > 0) { if (e & 1) res = (res * base) % m; base = (base * base) % m; e = Math.floor(e / 2); } return res; },
+    wrong: 'function modInverse(a,m){return (m-a)%m;}',
+  },
+  {
+    id: 'rc-h15-egg-drop', difficulty: 'hard', entryPoint: 'eggDrop',
+    prompt: 'Write a JavaScript function `eggDrop(eggs, floors)` that returns the minimum number of trials that GUARANTEES finding the highest safe floor in the worst case, given `eggs` identical eggs and a building of `floors` floors (an egg that survives a drop can be reused; a broken egg cannot). eggDrop(1, 10) === 10, eggDrop(2, 10) === 4. Reason about the trade-off, not a plain binary search. Return only the function.',
+    inputs: [[1, 10], [2, 10], [2, 36], [3, 14], [2, 100], [3, 200]],
+    ref: (eggs, floors) => { const dp = Array.from({ length: eggs + 1 }, () => new Array(floors + 1).fill(0)); for (let j = 1; j <= floors; j++) dp[1][j] = j; for (let i = 2; i <= eggs; i++) for (let j = 1; j <= floors; j++) { let best = Infinity; for (let x = 1; x <= j; x++) { const val = 1 + Math.max(dp[i - 1][x - 1], dp[i][j - x]); if (val < best) best = val; } dp[i][j] = best; } return dp[eggs][floors]; },
+    ref2: (eggs, floors) => { // min t with sum_{i=1..eggs} C(t,i) >= floors (independent formulation)
+      const covers = (t) => { let sum = 0, c = 1; for (let i = 1; i <= eggs; i++) { c = c * (t - i + 1) / i; sum += c; if (sum >= floors) return true; } return sum >= floors; };
+      let t = 1; while (!covers(t)) t++; return t; },
+    wrong: 'function eggDrop(eggs,floors){return Math.ceil(Math.log2(floors+1));}',
+  },
 ];
 
 function buildTests(entryPoint, inputs, expected) {
