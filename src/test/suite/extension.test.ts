@@ -1,5 +1,5 @@
 /**
- * Luigi Codes — integration suite (T1–T27).
+ * Luigi Codes — integration suite (T1–T28).
  *
  * Runs inside a real extension host with NO model server available: every
  * assertion here must hold on a cold machine.
@@ -13,7 +13,7 @@ import * as vscode from 'vscode';
 import { LuigiAgent } from '../../agent/agentLoop';
 import { createDefaultTools, ToolRegistry } from '../../agent/tools/toolRegistry';
 import { LuigiChatViewProvider } from '../../chat/chatPanel';
-import { blendScore, CodebaseIndex } from '../../context/codebaseIndex';
+import { blendScore, CodebaseIndex, parseImports, parseSymbols } from '../../context/codebaseIndex';
 import { escapeHtml, renderInline, renderMarkdown } from '../../chat/markdown';
 import { buildTrainingExamples, SelfImprovement } from '../../improvement/selfImprove';
 import { ModelProfile, ModelRouter, parseSseChunk, TaskKind } from '../../inference/modelRouter';
@@ -822,5 +822,39 @@ suite('Luigi Codes', () => {
     assert.strictEqual(history[1].id, 'a');
 
     router.dispose();
+  });
+
+  test('T28: parseSymbols and parseImports extract cross-language structure', () => {
+    const ts = [
+      'import { Foo } from "./foo";',
+      'import * as vscode from "vscode";',
+      'const bar = require("bar");',
+      'export class Widget {}',
+      'export interface Shape { x: number }',
+      'export type ID = string;',
+      'export function build(n: number) { return n; }',
+      'export const make = (x: number) => x * 2;',
+      'export const MAX_SIZE = 100;',
+    ].join('\n');
+    const syms = parseSymbols(ts, 'typescript', 'a.ts');
+    const kindOf = (name: string): string | undefined => syms.find((s) => s.name === name)?.kind;
+    assert.strictEqual(kindOf('Widget'), 'class');
+    assert.strictEqual(kindOf('Shape'), 'interface');
+    assert.strictEqual(kindOf('ID'), 'type');
+    assert.strictEqual(kindOf('build'), 'function');
+    assert.strictEqual(kindOf('make'), 'function'); // const arrow form
+    assert.strictEqual(kindOf('MAX_SIZE'), 'constant');
+    assert.strictEqual(syms.find((s) => s.name === 'build')?.line, 7); // 1-indexed
+
+    const tsImports = parseImports(ts, 'typescript');
+    assert.ok(tsImports.includes('./foo') && tsImports.includes('vscode'), 'es imports');
+    assert.ok(tsImports.includes('bar'), 'require() import');
+
+    const py = 'from os import path\nimport sys\nclass Cat:\n    def meow(self):\n        pass';
+    const pySyms = parseSymbols(py, 'python', 'a.py');
+    assert.ok(pySyms.some((s) => s.name === 'Cat' && s.kind === 'class'));
+    assert.ok(pySyms.some((s) => s.name === 'meow' && s.kind === 'function'));
+    const pyImports = parseImports(py, 'python');
+    assert.ok(pyImports.includes('os') && pyImports.includes('sys'), 'python imports');
   });
 });

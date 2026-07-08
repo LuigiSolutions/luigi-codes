@@ -349,7 +349,7 @@ LANGUAGE_PATTERNS.javascript = LANGUAGE_PATTERNS.typescript;
 LANGUAGE_PATTERNS.csharp = LANGUAGE_PATTERNS.java;
 LANGUAGE_PATTERNS.kotlin = LANGUAGE_PATTERNS.java;
 
-function parseSymbols(text: string, language: string, file: string): SymbolInfo[] {
+export function parseSymbols(text: string, language: string, file: string): SymbolInfo[] {
   const patterns = LANGUAGE_PATTERNS[language];
   if (!patterns) {
     return [];
@@ -368,7 +368,7 @@ function parseSymbols(text: string, language: string, file: string): SymbolInfo[
   return symbols;
 }
 
-function parseImports(text: string, language: string): string[] {
+export function parseImports(text: string, language: string): string[] {
   const imports = new Set<string>();
   const add = (spec: string | undefined): void => {
     if (spec && spec.length > 0 && imports.size < 100) {

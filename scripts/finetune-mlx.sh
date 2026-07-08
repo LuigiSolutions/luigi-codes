@@ -28,9 +28,13 @@ if ! command -v mlx_lm.lora >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "🍄 Luigi — fine-tuning $BASE_MODEL on $DATA_DIR"
+echo "🍄 Luigi: fine-tuning $BASE_MODEL on $DATA_DIR"
 echo "   train: $(wc -l < "$DATA_DIR/train.jsonl") examples · valid: $(wc -l < "$DATA_DIR/valid.jsonl")"
 
+# --grad-checkpoint keeps peak GPU memory ~7.6 GB so a 7B LoRA fits the 16 GB M4;
+# without it, num-layers 8+ OOMs on longer sequences (Metal Insufficient Memory).
+# --mask-prompt trains on the completion only (standard instruction-tuning objective).
+# Both validated on-machine (M4/16GB) 2026-07-08.
 mlx_lm.lora \
   --model "$BASE_MODEL" \
   --train \
@@ -38,6 +42,8 @@ mlx_lm.lora \
   --iters 600 \
   --batch-size 1 \
   --num-layers 8 \
+  --grad-checkpoint \
+  --mask-prompt \
   --adapter-path "$ADAPTER_OUT"
 
 echo "🍄 Done. Adapter written to $ADAPTER_OUT"
