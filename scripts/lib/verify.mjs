@@ -9,6 +9,19 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
+// Bump on ANY change to extraction/matching/execution that can move a score. Every eval
+// report records this; numbers are only comparable within the same version (see the
+// re-baseline rule). v1 = original; v2 = strip digit-group separators before number
+// extraction so "34,650" == 34650 (fixes the e23 false-negative).
+export const VERIFIER_VERSION = 2;
+
+// Remove thousands separators (comma or underscore) that sit BETWEEN digits, so a correct
+// "34,650" or "1_000" is read as one number. Only digit-flanked separators are stripped, so
+// list-like "3, 4" (comma + space) and decimals are untouched.
+function stripDigitGroupSeparators(s) {
+  return String(s).replace(/(?<=\d)[,_](?=\d)/g, '');
+}
+
 // Reasoning-distilled models (DeepSeek-R1 distills, QwQ) emit a long <think>...</think>
 // chain before the answer. Score only the post-reasoning text, or the chain's own
 // numbers corrupt answer extraction. If the closing tag is missing (model ran out of
@@ -86,7 +99,7 @@ export function extractFinalAnswer(text) {
 // Vote key for self-consistency: numeric tasks collapse to their number, text to normalized.
 export function answerKey(raw, task) {
   if (task.type === 'number') {
-    const nums = String(raw).match(/-?\d+(?:\.\d+)?/g);
+    const nums = stripDigitGroupSeparators(raw).match(/-?\d+(?:\.\d+)?/g);
     if (nums && nums.length) return String(Number(nums[nums.length - 1]));
   }
   return normalizeAnswer(raw);
@@ -95,7 +108,7 @@ export function answerKey(raw, task) {
 export function answerMatches(candidate, task) {
   if (task.type === 'number') {
     const expected = Number(task.answer);
-    const nums = String(candidate).match(/-?\d+(?:\.\d+)?/g);
+    const nums = stripDigitGroupSeparators(candidate).match(/-?\d+(?:\.\d+)?/g);
     if (nums && nums.length) {
       const got = Number(nums[nums.length - 1]);
       return Math.abs(got - expected) < 1e-6;

@@ -7,6 +7,7 @@ import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { builtinModules } from 'module';
+import ts from 'typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = path.join(root, 'src');
@@ -34,14 +35,13 @@ function walk(dir) {
 
 function importsOf(file) {
   const text = readFileSync(file, 'utf8');
-  const specs = [];
-  for (const match of text.matchAll(/(?:^|\n)\s*import\s+(?:type\s+)?[\w${},*\s]*?(?:from\s+)?['"]([^'"]+)['"]/g)) {
-    specs.push(match[1]);
-  }
-  for (const match of text.matchAll(/require\(\s*['"]([^'"]+)['"]\s*\)/g)) {
-    specs.push(match[1]);
-  }
-  return specs;
+  // Parse with the TypeScript scanner (AST-level) instead of regex: import/require syntax
+  // that appears INSIDE a string literal (e.g. a test fixture feeding parseImports) is
+  // correctly ignored, whereas the old regex read it as a real dependency. preProcessFile
+  // captures es imports, `export ... from`, dynamic import(), require() calls, and
+  // triple-slash references -- a correct superset of what the regex matched.
+  const pre = ts.preProcessFile(text, /* readImportFiles */ true, /* detectJavaScriptImports */ true);
+  return pre.importedFiles.map((f) => f.fileName);
 }
 
 const files = walk(srcDir);

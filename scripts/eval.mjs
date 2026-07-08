@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   stripStopMarkers, stripThinkBlocks, extractCode, runJs,
-  extractFinalAnswer, answerKey, answerMatches,
+  extractFinalAnswer, answerKey, answerMatches, VERIFIER_VERSION,
 } from './lib/verify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -249,6 +249,7 @@ function writeReport(runs) {
   const when = stamp();
   const meta = {
     when,
+    verifierVersion: VERIFIER_VERSION,
     label: CONFIG.label || null,
     endpoint: CONFIG.endpoint,
     provider: CONFIG.provider,
@@ -317,6 +318,16 @@ function runSelftest() {
   check('number exact', answerMatches('Final answer: 7', { type: 'number', answer: '7' }));
   check('number decimal', answerMatches('7.5 degrees', { type: 'number', answer: '7.5' }));
   check('number rejects wrong', !answerMatches('8', { type: 'number', answer: '7' }));
+  // Regression (e23): a correct answer written with thousands separators must match (VERIFIER v2).
+  check('number thousands comma', answerMatches('Final answer: 34,650', { type: 'number', answer: '34650' }));
+  check('number thousands multi-group', answerMatches('1,212,640 passwords', { type: 'number', answer: '1212640' }));
+  check('number underscore separator', answerMatches('1_000', { type: 'number', answer: '1000' }));
+  check('number comma still rejects wrong', !answerMatches('34,651', { type: 'number', answer: '34650' }));
+  check('vote key strips thousands', answerKey('so 34,650 total', { type: 'number', answer: '0' }) === '34650');
+  // \boxed{} number answers extract cleanly (already handled by canonicalizeMath; guard it).
+  check('number in boxed', answerMatches('\\boxed{144}', { type: 'number', answer: '144' }));
+  // The verifier is versioned so reports are only compared within a version.
+  check('verifier version present', Number.isInteger(VERIFIER_VERSION) && VERIFIER_VERSION >= 2);
   check('text fraction latex folds', answerMatches('\\(\\frac{1}{6}\\)', { type: 'text', answer: '1/6' }));
   check('text word', answerMatches('Wednesday', { type: 'text', answer: 'wednesday' }));
 
