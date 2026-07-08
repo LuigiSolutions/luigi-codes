@@ -81,6 +81,7 @@ npm test                 # integration suite (T1–T25) in a real downloaded VS 
                          # router fallback, plan parsing, brand-token emission
 npm run audit:imports    # every import resolves; zero circular dependencies
 npm run audit:brand      # every hex/rgba in src/, media/, package.json is on-palette
+npm run audit:copy       # zero em dashes in user-facing copy (src/, api/, site/, media/)
 ```
 
 The first `npm test` downloads a VS Code build into `.vscode-test/` (~260 MB, cached).
@@ -142,7 +143,8 @@ src/
 └── test/                     @vscode/test-electron + mocha integration suite (T1–T25)
 scripts/
 ├── audit-imports.mjs         import resolution + circular-dependency audit
-└── audit-brand.mjs           palette compliance audit (src/, media/, package.json)
+├── audit-brand.mjs           palette compliance audit (src/, media/, package.json)
+└── audit-copy.mjs            em-dash-free user copy audit (src/, api/, site/, media/)
 ```
 
 Data flow, one run: `chatPanel` → `agentLoop.execute()` → `codebaseIndex` + `memorySystem` (context) → `modelRouter` (plan) → approval modal → `toolRegistry` (execute, self-correct) → `modelRouter` (verify) → `memorySystem.storeTask()` + `selfImprove.analyzeTask()`.

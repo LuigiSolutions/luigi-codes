@@ -17,20 +17,13 @@
  * your machine / your network, and the printed URL carries the access token.
  */
 import * as path from 'node:path';
-import { LuigiBrand, LuigiTheme } from '../ui/designTokens';
+import { LuigiBrand, LuigiTheme, ansiFromHex } from '../ui/designTokens';
 import { LuigiWebServer, WireFormat } from './webServer';
 
 // 24-bit ANSI straight from the brand tokens — no hardcoded values.
 const GOLD = ansiFromHex(LuigiBrand.colors.accent.gold);
 const MUTED = ansiFromHex(LuigiBrand.colors.foreground.secondary);
 const RESET = '\x1b[0m';
-
-function ansiFromHex(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `\x1b[38;2;${r};${g};${b}m`;
-}
 
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);

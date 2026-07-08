@@ -20,6 +20,7 @@ import { SelfImprovement } from './improvement/selfImprove';
 import { ModelRouter } from './inference/modelRouter';
 import { MemorySystem } from './memory/memorySystem';
 import { LuigiWebServer } from './web/webServer';
+import { LuigiBrand, ansiFromHex } from './ui/designTokens';
 
 let services: LuigiServices | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -440,8 +441,8 @@ class LuigiTerminalChat implements vscode.Pseudoterminal {
     },
   ];
 
-  private static readonly GOLD = '\x1b[38;2;201;168;106m'; // #c9a86a
-  private static readonly MUTED = '\x1b[38;2;156;148;138m'; // #9c948a
+  private static readonly GOLD = ansiFromHex(LuigiBrand.colors.accent.gold);
+  private static readonly MUTED = ansiFromHex(LuigiBrand.colors.foreground.secondary);
   private static readonly RESET = '\x1b[0m';
 
   constructor(private readonly deps: LuigiServices) {}

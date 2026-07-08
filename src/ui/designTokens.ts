@@ -135,6 +135,19 @@ export const LuigiBrand = {
 export type LuigiTheme = 'premium-black' | 'premium-dark';
 
 /**
+ * 24-bit ANSI foreground escape from a brand hex, so terminal surfaces (the
+ * VS Code pseudoterminal chat, the standalone CLI banner) color straight from
+ * the tokens instead of hardcoding escape sequences. Keeps every color flowing
+ * through designTokens per the brand convention.
+ */
+export function ansiFromHex(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `\x1b[38;2;${r};${g};${b}m`;
+}
+
+/**
  * Emit the brand as CSS custom properties for webview surfaces.
  * premium-black keeps the pure canvas; premium-dark lifts every surface one
  * step (canvas→surface, surface→tertiary) for lighter-feeling panels.

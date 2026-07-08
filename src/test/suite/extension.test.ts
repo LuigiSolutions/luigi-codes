@@ -1,5 +1,5 @@
 /**
- * Luigi Codes — integration suite (T1–T25).
+ * Luigi Codes — integration suite (T1–T27).
  *
  * Runs inside a real extension host with NO model server available: every
  * assertion here must hold on a cold machine.
@@ -17,10 +17,10 @@ import { blendScore, CodebaseIndex } from '../../context/codebaseIndex';
 import { escapeHtml, renderInline, renderMarkdown } from '../../chat/markdown';
 import { buildTrainingExamples, SelfImprovement } from '../../improvement/selfImprove';
 import { ModelProfile, ModelRouter, parseSseChunk, TaskKind } from '../../inference/modelRouter';
-import { splitAtStopMarker } from '../../inference/streamText';
+import { ndjsonLines, splitAtStopMarker } from '../../inference/streamText';
 import { GitHubClient, validRepoName } from '../../github/githubClient';
 import { createGitHubTools } from '../../github/githubTools';
-import { MemorySystem } from '../../memory/memorySystem';
+import { MemorySystem, TaskRecord } from '../../memory/memorySystem';
 import { cssVariables, LuigiBrand } from '../../ui/designTokens';
 import { LuigiWebServer, pickReviewFiles } from '../../web/webServer';
 
@@ -770,6 +770,57 @@ suite('Luigi Codes', () => {
     const fits = router.scoreModel(coder, 'code-generation', 1000);
     const overflows = router.scoreModel(coder, 'code-generation', 100000);
     assert.ok(overflows < fits, 'Context overflow should lower the score.');
+    router.dispose();
+  });
+
+  test('T26: ndjsonLines splits across chunk boundaries, drops blank lines, flushes the tail', async () => {
+    // A JSON line split mid-way across two chunks, a whitespace-only line, and a
+    // final line with no trailing newline must all be handled correctly.
+    const chunks = ['{"a":1}\n{"b":', '2}\n   \n', '{"c":3}'];
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        for (const chunk of chunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    });
+    const lines: string[] = [];
+    for await (const line of ndjsonLines(stream)) {
+      lines.push(line);
+    }
+    assert.deepStrictEqual(lines, ['{"a":1}', '{"b":2}', '{"c":3}']);
+  });
+
+  test('T27: MemorySystem stores, ranks by similarity, and orders history newest-first (server down)', async () => {
+    const router = new ModelRouter(noop);
+    const storage = vscode.Uri.file(path.join(os.tmpdir(), `luigi-mem-${Date.now()}`));
+    const memory = new MemorySystem(storage, router, noop);
+
+    const auth: TaskRecord = {
+      id: 'a', timestamp: 1000, prompt: 'Implement authentication middleware for the server',
+      planSummary: 'add middleware', outcome: 'done', success: true, filesTouched: ['auth.ts'], durationMs: 5,
+    };
+    const layout: TaskRecord = {
+      id: 'b', timestamp: 2000, prompt: 'Refactor the pagination component styling',
+      planSummary: 'css work', outcome: 'done', success: true, filesTouched: ['grid.css'], durationMs: 5,
+    };
+    await memory.storeTask(auth);
+    await memory.storeTask(layout);
+
+    // Hash-embedding fallback (no embed server): a query sharing tokens with the
+    // auth record must rank it first; the unrelated record scores 0 and is dropped.
+    const hits = await memory.findSimilar('authentication middleware', 3);
+    assert.ok(hits.length >= 1, 'expected at least one similar record');
+    assert.strictEqual(hits[0].id, 'a', 'auth record should rank first');
+    assert.ok(!hits.some((record) => record.id === 'b'), 'unrelated record should be filtered out');
+
+    // History is newest-first by timestamp.
+    const history = memory.getTaskHistory();
+    assert.strictEqual(history[0].id, 'b');
+    assert.strictEqual(history[1].id, 'a');
+
     router.dispose();
   });
 });

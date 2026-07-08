@@ -8,7 +8,7 @@ This is **Luigi Codes** — Luigi Solutions' private local AI coding agent, a VS
 extension: chat panel, 5-phase agent loop (context → plan → **human approval modal** →
 execute with self-correction → verify) with an 11-tool registry, a model router for
 Ollama / LM Studio, a codebase index, ChromaDB + JSON memory, and a self-improvement
-subsystem. Ten strict-TypeScript source files under `src/`, plus an integration test
+subsystem. Fifteen strict-TypeScript source files under `src/`, plus an integration test
 suite (`src/test/`, @vscode/test-electron + mocha) and audit scripts (`scripts/`).
 Read `README.md` and `src/extension.ts` before changing anything.
 
@@ -39,7 +39,7 @@ cost. Everything runs on-machine; no cloud dependency, ever.
 
 ```bash
 npm run compile          # zero errors, zero warnings
-npm test                 # integration suite T1–T10 in a real extension host
+npm test                 # integration suite T1–T25 in a real extension host
 npm run audit:imports    # every import resolves, zero circular deps
 npm run audit:brand      # every hex/rgba in src/, media/, site/, package.json on-palette
 npm run audit:copy       # zero em dashes in user-displayed copy
