@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  stripStopMarkers, stripThinkBlocks, extractCode, runJs,
+  stripStopMarkers, stripThinkBlocks, extractCode, runJs, runValue,
   extractFinalAnswer, answerKey, answerMatches, VERIFIER_VERSION,
 } from './lib/verify.mjs';
 
@@ -155,6 +155,38 @@ async function scoreReasoningSingle(task) {
   return { ok: false, got: raw || '(none)' };
 }
 
+// M1: route math/logic through code, with mental-math fallback ONLY on execution failure.
+// The base is strong at code (coding 27/27) but weak at mental math (31/40); writing+running code
+// wins the computational/counting problems. But forcing code on EVERY problem is net-negative
+// (measured: blanket code 26/40 < 31 mental) because on some problems the model writes code that
+// times out or throws. The fix that actually helps (measured 35/40, +4): take code's answer when it
+// EXECUTES, else fall back to mental math. The fallback trigger is the execution signal alone (did
+// solve() run?), never the ground-truth answer, so there is no leakage. This is a PRODUCT/test-time
+// strategy (Track A), not a raw-model change.
+const REASONING_CODE_SYSTEM =
+  'You solve math and logic problems by writing code. Reason briefly about the approach, then return ' +
+  'ONLY a single fenced JavaScript code block defining a function `solve()` that RETURNS the exact ' +
+  'answer (a number, or a string for non-numeric answers). Do not print anything; just return it.';
+
+async function scoreReasoningViaCode(task) {
+  const out = await callModel([
+    { role: 'system', content: REASONING_CODE_SYSTEM },
+    { role: 'user', content: task.prompt },
+  ]);
+  const code = extractCode(out);
+  if (CONFIG.dryRun) return { ok: false, got: 'dry-run (not executed)' };
+  const r = runValue(code);
+  if (r.ok) {
+    // Code executed: commit to its value. We do NOT re-check against the answer to decide fallback
+    // (that would leak ground truth); a clean-but-wrong result stays wrong, as it must.
+    const ok = answerMatches(r.value, task);
+    return { ok, got: `${r.value || '(empty)'} [code]` };
+  }
+  // Code failed to execute -> fall back to mental math (the ONLY legitimate fallback signal).
+  const m = await scoreReasoningSingle(task);
+  return { ok: m.ok, got: `${m.got} [mental-fallback: ${r.detail}]` };
+}
+
 async function scoreReasoningSelfConsistency(task) {
   const votes = {};      // key -> count
   const rawByKey = {};   // key -> a representative raw answer
@@ -244,12 +276,15 @@ async function runReasoningCode() {
 async function runReasoning() {
   const tasks = selectTasks(loadSuite('reasoning'));
   const selfConsistent = CONFIG.strategy === 'self-consistency';
+  const viaCode = CONFIG.strategy === 'code';
   const results = [];
   for (const t of tasks) {
     process.stdout.write(`  [reasoning/${t.difficulty}] ${t.id} ... `);
     let passed = false, got = '', detail = '';
     try {
-      const s = selfConsistent ? await scoreReasoningSelfConsistency(t) : await scoreReasoningSingle(t);
+      const s = viaCode
+        ? await scoreReasoningViaCode(t)
+        : selfConsistent ? await scoreReasoningSelfConsistency(t) : await scoreReasoningSingle(t);
       passed = s.ok; got = s.got;
     } catch (err) {
       detail = (err && err.message) || String(err);
@@ -257,7 +292,8 @@ async function runReasoning() {
     console.log(passed ? 'PASS' : `FAIL (got: ${got || detail})`);
     results.push({ id: t.id, difficulty: t.difficulty, passed, got, detail });
   }
-  return { suite: 'reasoning', strategy: selfConsistent ? `self-consistency x${CONFIG.samples}` : 'single', results };
+  const strategy = viaCode ? 'code+mental-fallback' : selfConsistent ? `self-consistency x${CONFIG.samples}` : 'single';
+  return { suite: 'reasoning', strategy, results };
 }
 
 // --- report ------------------------------------------------------------------
@@ -400,6 +436,12 @@ function runSelftest() {
     check('no duplicate reasoning ids', new Set(rj.tasks.map((t) => t.id)).size === rj.tasks.length);
     check('coding suite loads', Array.isArray(cj.tasks) && cj.tasks.length > 0);
     check('no duplicate coding ids', new Set(cj.tasks.map((t) => t.id)).size === cj.tasks.length);
+    // M1 (route math through code): runValue executes solve() and returns its value; the value then
+    // scores through the SAME answerMatches as mental-math answers.
+    const rv = runValue('function solve(){ let s=0; for(let d=1; d<=360; d++) if(360%d===0) s+=d; return s; }');
+    check('runValue executes solve() and captures the number', rv.ok && rv.value === '1170');
+    check('runValue result scores via answerMatches', answerMatches(rv.value, { type: 'number', answer: '1170' }));
+    check('runValue reports a code error, does not throw', runValue('function solve(){ return nope(); }').ok === false);
     const rcj = JSON.parse(readFileSync(join(TASKS_DIR, 'reasoning_code.json'), 'utf8'));
     check('reasoning_code suite >= 20', Array.isArray(rcj.tasks) && rcj.tasks.length >= 20);
     check('reasoning_code tasks have entryPoint + tests', rcj.tasks.every((t) => t.entryPoint && typeof t.tests === 'string' && t.tests.length > 0));

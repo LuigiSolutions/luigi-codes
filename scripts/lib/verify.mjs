@@ -66,6 +66,30 @@ export function runJs(code, tests) {
   return { ok, detail };
 }
 
+// Run model-written code that DEFINES `solve()` and return the string form of solve()'s value.
+// This is the execution half of the "route math through code" strategy (M1): the model computes
+// the answer in code (a base strength) instead of doing mental arithmetic (a weakness). The driver
+// prints one sentinel line so we recover exactly solve()'s return, unaffected by any stray logs.
+export function runValue(code) {
+  const file = join(tmpdir(), `luigi-solve-${process.pid}-${Math.floor(performance.now())}.mjs`);
+  const driver = 'try{const __r=solve();console.log("LUIGI_RESULT:"+String(__r));}catch(e){console.error("solve threw:",e&&e.message||e);process.exit(3);}';
+  writeFileSync(file, `${code}\n\n${driver}\n`);
+  const res = spawnSync(process.execPath, [file], {
+    timeout: 10000,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (res.error) {
+    return { ok: false, value: '', detail: res.error.code === 'ETIMEDOUT' ? 'execution timed out' : res.error.message };
+  }
+  if (res.status !== 0) {
+    return { ok: false, value: '', detail: (res.stderr || '').trim().split('\n').slice(-1)[0] || `exit ${res.status}` };
+  }
+  const m = /LUIGI_RESULT:(.*)/.exec(res.stdout || '');
+  if (!m) return { ok: false, value: '', detail: 'no solve() result captured' };
+  return { ok: true, value: m[1].trim(), detail: '' };
+}
+
 export function canonicalizeMath(s) {
   // Fold common LaTeX / markdown answer formatting so 3/10 == \frac{3}{10} == **3/10**.
   return String(s)
