@@ -68,6 +68,12 @@ interface FixStrategy {
   note: string;
 }
 
+/** Grounded end-state judgement (Phase 5): 'unknown' never blocks success. */
+interface EndState {
+  verdict: 'pass' | 'fail' | 'unknown';
+  reason: string;
+}
+
 export class LuigiAgent implements vscode.Disposable {
   private readonly progress = new vscode.EventEmitter<AgentProgressEvent>();
   readonly onProgress: vscode.Event<AgentProgressEvent> = this.progress.event;
@@ -155,12 +161,24 @@ export class LuigiAgent implements vscode.Disposable {
         );
       }
 
-      // Phase 5 — verify
-      this.emit('verify', 'Reviewing results…');
+      // Phase 5 — verify (end-state grounded, with one correction pass)
+      // Tool-call success is not task success: a writeFile can "succeed" while the file it
+      // wrote still fails the request (the classic over-reported success). So re-read what was
+      // actually written and judge the task against real disk content, correcting once on FAIL.
+      this.emit('verify', 'Verifying end state…');
       const failed = outcomes.filter((o) => !o.ok);
-      const summary = await this.verify(task, outcomes);
-      const success = failed.length === 0;
-      this.emit('verify', success ? 'All steps verified.' : `${failed.length} step(s) failed.`, success ? 'success' : 'error');
+      let endState = await this.verifyEndState(task, outcomes);
+      if (endState.verdict === 'fail' && !this.signal?.aborted) {
+        this.emit('verify', `End state not yet met (${endState.reason}); attempting one correction…`, 'error');
+        const corrected = await this.correctEndState(task, outcomes);
+        if (corrected) {
+          outcomes.push(corrected);
+          endState = await this.verifyEndState(task, outcomes);
+        }
+      }
+      const summary = await this.verify(task, outcomes, endState);
+      const success = failed.length === 0 && endState.verdict !== 'fail';
+      this.emit('verify', success ? 'Verified against the task.' : 'Verification found unmet requirements.', success ? 'success' : 'error');
 
       return this.finish(task, outcomes, success, summary, started);
     } catch (error) {
@@ -425,16 +443,21 @@ export class LuigiAgent implements vscode.Disposable {
 
   // ── Phase 5 ────────────────────────────────────────────────────────────────
 
-  private async verify(task: AgentTask, outcomes: StepOutcome[]): Promise<string> {
+  private async verify(task: AgentTask, outcomes: StepOutcome[], endState?: EndState): Promise<string> {
     const transcript = outcomes
       .map(
         (o) =>
           `Step ${o.step.id}: ${o.step.description} [${o.ok ? 'OK' : 'FAILED'}]\n${o.output.slice(0, 1200)}`
       )
       .join('\n\n');
+    const verdictLine =
+      endState && endState.verdict !== 'unknown'
+        ? `\n\nEND-STATE CHECK (against the files actually on disk): ${endState.verdict.toUpperCase()}: ${endState.reason}\n` +
+          'Your report MUST be consistent with this check; do not claim success it did not confirm.'
+        : '';
     try {
       return await this.callModel(
-        `TASK: ${task.prompt}\n\nEXECUTION TRANSCRIPT:\n${transcript}\n\n` +
+        `TASK: ${task.prompt}\n\nEXECUTION TRANSCRIPT:\n${transcript}${verdictLine}\n\n` +
           'Write a short, honest report for the user: what was accomplished, what failed and why, and the single best next step. Plain prose, no preamble.',
         'code-review'
       );
@@ -442,6 +465,87 @@ export class LuigiAgent implements vscode.Disposable {
       // Verification must never sink the run's actual results.
       const done = outcomes.filter((o) => o.ok).length;
       return `${done}/${outcomes.length} steps completed. (Model unavailable for the final report.)`;
+    }
+  }
+
+  /**
+   * Files this run actually wrote or edited successfully (deduped, first-seen order). We ground the
+   * end-state check ONLY on files a step wrote OK: measurement showed that also correcting the
+   * targets of FAILED edits made the model judge mis-fire and the correction pass clobber
+   * previously-correct files (agentic 7/10 -> 5/10, 0 -> 3 flaky), so the conservative set wins.
+   */
+  private writtenPaths(outcomes: StepOutcome[]): string[] {
+    const paths: string[] = [];
+    for (const o of outcomes) {
+      if (!o.ok || !o.step.tool) continue;
+      if ((o.step.tool === 'writeFile' || o.step.tool === 'editFile') && typeof o.step.args?.path === 'string') {
+        if (!paths.includes(o.step.args.path)) paths.push(o.step.args.path);
+      }
+    }
+    return paths;
+  }
+
+  /**
+   * Judge task completion against REAL disk content, not the transcript's claims — this is
+   * what catches an over-reported success (a step that "succeeded" but left the file wrong).
+   * Returns 'unknown' (never blocks) when nothing was written or the model is unavailable.
+   */
+  private async verifyEndState(task: AgentTask, outcomes: StepOutcome[]): Promise<EndState> {
+    const paths = this.writtenPaths(outcomes);
+    if (paths.length === 0) return { verdict: 'unknown', reason: 'no files were written' };
+    const snapshots: string[] = [];
+    for (const p of paths.slice(0, 8)) {
+      const res = await this.tools.execute('readFile', { path: p });
+      const body = res.ok ? res.output : `(could not read: ${res.error ?? res.output})`;
+      snapshots.push(`----- ${p} -----\n${body.slice(0, 2000)}`);
+    }
+    try {
+      const raw = await this.callModel(
+        `TASK:\n${task.prompt}\n\nCURRENT FILE CONTENTS ON DISK (the source of truth, not any earlier claim):\n${snapshots.join('\n\n')}\n\n` +
+          'Judge STRICTLY whether the task is fully and correctly accomplished by these exact file contents. ' +
+          'Read the content literally; do not assume anything not shown. Reply with exactly one line ' +
+          '"VERDICT: PASS" or "VERDICT: FAIL", then on the next line one short reason.',
+        'code-review'
+      );
+      const m = /VERDICT:\s*(PASS|FAIL)/i.exec(raw);
+      if (!m) return { verdict: 'unknown', reason: 'no verdict parsed' };
+      const reason = (raw.split('\n').slice(1).join(' ').trim() || raw.trim()).slice(0, 240);
+      return { verdict: m[1].toLowerCase() === 'pass' ? 'pass' : 'fail', reason };
+    } catch {
+      return { verdict: 'unknown', reason: 'model unavailable for end-state check' };
+    }
+  }
+
+  /**
+   * One grounded correction pass: re-derive the most-recently-written file's full content so it
+   * satisfies the task, and write it. Runs under the plan-level approval already granted (this is
+   * the same self-correction contract as Phase 4). Returns the corrective step's outcome, or
+   * undefined if nothing could be corrected.
+   */
+  private async correctEndState(task: AgentTask, outcomes: StepOutcome[]): Promise<StepOutcome | undefined> {
+    const paths = this.writtenPaths(outcomes);
+    if (paths.length === 0 || this.signal?.aborted) return undefined;
+    const target = paths[paths.length - 1];
+    const cur = await this.tools.execute('readFile', { path: target });
+    try {
+      const raw = await this.callModel(
+        `The task is NOT yet satisfied by the file on disk. Fix it.\n\nTASK:\n${task.prompt}\n\n` +
+          `CURRENT CONTENT OF ${target}:\n${(cur.ok ? cur.output : '').slice(0, 2000)}\n\n` +
+          'Reply with ONLY the corrected, complete contents of the file (no code fences, no commentary) that fully satisfy the task.',
+        'code-generation'
+      );
+      const content = stripCodeFences(raw);
+      const step: PlanStep = {
+        id: outcomes.length + 1,
+        description: `Correct ${target} to satisfy the task`,
+        tool: 'writeFile',
+        args: { path: target, content },
+      };
+      const res = await this.tools.execute('writeFile', { path: target, content });
+      if (res.ok) this.improve.noteProducedFile(target, content, task.prompt);
+      return { step, ok: res.ok, output: res.ok ? res.output : res.error ?? res.output, attempts: 1 };
+    } catch {
+      return undefined;
     }
   }
 
@@ -522,4 +626,15 @@ function normalizeArgs(value: unknown): Record<string, string> | undefined {
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Strip a single surrounding markdown code fence if the model wrapped file content in one.
+ * Writing ```js … ``` verbatim would corrupt the file, so we unwrap the outermost fence and
+ * leave already-clean content untouched.
+ */
+function stripCodeFences(text: string): string {
+  const trimmed = text.trim();
+  const fence = /^```[^\n]*\n([\s\S]*?)\n?```$/.exec(trimmed);
+  return fence ? fence[1] : trimmed;
 }
