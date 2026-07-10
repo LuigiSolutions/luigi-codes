@@ -23,3 +23,6 @@ training/dataset*/
 .DS_Store
 .vercel
 .env*
+
+# Promoted LoRA adapter weights (binary, live on pod + local backup; config+manifest tracked)
+training/adapters/**/*.safetensors
