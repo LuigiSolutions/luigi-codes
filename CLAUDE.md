@@ -16,6 +16,16 @@ Read `README.md` and `src/extension.ts` before changing anything.
 as possible (connectors optional, never required) — amazing quality at the cheapest
 cost. Everything runs on-machine; no cloud dependency, ever.
 
+**Sibling project — LuigiOS** (`github.com/LuigiSolutions/luigi-os`, mobile client
+`github.com/LuigiSolutions/luigi-os-mible-app`, local checkout `../luigi-os`): a
+SEPARATE repo, the umbrella product (desktop, mobile, web). Luigi Codes owns the
+model (training + serving); LuigiOS is planned to eventually consume Luigi Codes'
+own fine-tuned local model as its engine, pointing at the same local server this
+repo runs. That integration lives on the LuigiOS side, not here. Luigi Codes' own
+trained model is already the default brain for this extension + its web app
+(provider `custom`, `localhost:8080`, auto-started; see `src/inference/modelServer.ts`
+and `TRAINING.md`), not Ollama/LM Studio (those remain a bring-your-own fallback).
+
 ## HARD CONVENTIONS (violating any of these = a failure)
 
 - Every color flows through `src/ui/designTokens.ts` → CSS vars. **NEVER hardcode hex.**

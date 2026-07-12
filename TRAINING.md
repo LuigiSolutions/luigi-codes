@@ -98,11 +98,14 @@ Modelfile` if you prefer serving through Ollama (`luigi.model.provider` =
 still supports this as a bring-your-own-model path).
 
 **Product direction:** Luigi's own fine-tuned model is the intended brain for
-every Luigi Solutions surface, not just this extension — the web app and,
-later, the mobile/desktop apps all point at the same local server. LuigiOS
-(a separate repo/project) is planned to eventually use Luigi Codes' trained
-model as its underlying engine; that integration happens in the LuigiOS repo,
-not here.
+every Luigi Solutions surface, not just this extension: the web app and, later,
+the mobile/desktop apps all point at the same local server. **LuigiOS**
+([github.com/LuigiSolutions/luigi-os](https://github.com/LuigiSolutions/luigi-os),
+with the mobile client at
+[luigi-os-mible-app](https://github.com/LuigiSolutions/luigi-os-mible-app)) is a
+separate repo/project planned to eventually use Luigi Codes' trained model as its
+underlying engine. That integration happens on the LuigiOS side, consuming this
+repo's model server as a client; nothing about it lives here.
 
 ## Measuring quality (eval harness)
 

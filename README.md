@@ -159,6 +159,16 @@ Every color in this extension is the Luigi Solutions palette, taken exactly from
 - Diff-preview apply for agent file edits
 - ✅ Fine-tune export (`JSONL`) + one-command local LoRA recipe (`Luigi: Export Training Data` + [TRAINING.md](TRAINING.md))
 - Multi-model ensemble verification for high-stakes edits
+- Serve Luigi's own fine-tuned model as the engine for **LuigiOS** (see below)
+
+## Related projects
+
+Luigi Codes is part of the wider Luigi Solutions product family:
+
+- **[LuigiOS](https://github.com/LuigiSolutions/luigi-os)**: the umbrella product (desktop, mobile, web). Luigi Codes is planned to become its engine, so LuigiOS apps will point at the same on-machine fine-tuned model that Luigi Codes trains and serves, rather than training a separate one.
+- **[luigi-os-mible-app](https://github.com/LuigiSolutions/luigi-os-mible-app)**: the LuigiOS mobile client.
+
+The model lives here (training + serving); LuigiOS consumes it as a client. See [TRAINING.md](TRAINING.md) for how the model is served.
 
 ---
 
