@@ -16,6 +16,9 @@ export { parseSseChunk } from './streamText';
 
 type Logger = (message: string) => void;
 
+/** Base model Luigi Codes' own LoRA fine-tune is served on top of via scripts/serve-model.py. */
+export const LUIGI_TRAINED_MODEL_ID = 'mlx-community/Qwen2.5-Coder-7B-Instruct-4bit';
+
 export type TaskKind =
   | 'code-generation'
   | 'code-explanation'
@@ -97,6 +100,24 @@ export class ModelRouter implements vscode.Disposable {
   constructor(private readonly log: Logger) {
     // Curated defaults — profiles for the models Luigi recommends. Detection
     // flips `available` and augments this list with whatever else is installed.
+    this.registerModel({
+      id: LUIGI_TRAINED_MODEL_ID,
+      name: 'Luigi (fine-tuned Qwen2.5-Coder 7B)',
+      family: 'luigi',
+      contextWindow: 32768,
+      strengths: [
+        'code-generation',
+        'code-review',
+        'bug-fixing',
+        'test-generation',
+        'planning',
+        'code-explanation',
+        'chat',
+      ],
+      speed: 4,
+      quality: 5,
+      available: false,
+    });
     this.registerModel({
       id: 'deepseek-coder:6.7b',
       name: 'DeepSeek Coder 6.7B',
@@ -509,10 +530,10 @@ export class ModelRouter implements vscode.Disposable {
   } {
     const config = vscode.workspace.getConfiguration('luigi');
     return {
-      provider: config.get<string>('model.provider', 'ollama'),
-      endpoint: config.get<string>('model.endpoint', 'http://localhost:11434').replace(/\/$/, ''),
-      primaryModel: config.get<string>('model.primaryModel', 'deepseek-coder:6.7b'),
-      fallbackModel: config.get<string>('model.fallbackModel', 'codellama:13b'),
+      provider: config.get<string>('model.provider', 'custom'),
+      endpoint: config.get<string>('model.endpoint', 'http://localhost:8080').replace(/\/$/, ''),
+      primaryModel: config.get<string>('model.primaryModel', LUIGI_TRAINED_MODEL_ID),
+      fallbackModel: config.get<string>('model.fallbackModel', 'qwen2.5-coder:7b'),
       embeddingModel: config.get<string>('model.embeddingModel', 'nomic-embed-text'),
     };
   }

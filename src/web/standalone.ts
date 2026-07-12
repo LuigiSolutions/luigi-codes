@@ -8,15 +8,18 @@
  * Options:
  *   --port <n>         port to listen on (default 8091)
  *   --lan              bind 0.0.0.0 so phones on your Wi-Fi can connect
- *   --endpoint <url>   inference server URL (default http://localhost:11434)
- *   --provider <p>     ollama | lmstudio | custom (default ollama)
+ *   --endpoint <url>   inference server URL (default http://localhost:8080, Luigi's own model)
+ *   --provider <p>     custom | ollama | lmstudio (default custom)
  *   --model <id>       preferred model id (default: first the server reports)
  *   --theme <t>        premium-black | premium-dark (default premium-black)
  *
  * Zero dependencies, same guarantees as the extension: everything stays on
  * your machine / your network, and the printed URL carries the access token.
+ * Like the extension, this auto-starts Luigi's own trained model server when
+ * the configured endpoint is unreachable (see ../inference/modelServer.ts).
  */
 import * as path from 'node:path';
+import { ensureLocalModelServer } from '../inference/modelServer';
 import { LuigiBrand, LuigiTheme, ansiFromHex } from '../ui/designTokens';
 import { LuigiWebServer, WireFormat } from './webServer';
 
@@ -35,12 +38,22 @@ function flag(name: string): boolean {
 }
 
 async function main(): Promise<void> {
-  const provider = arg('provider') ?? 'ollama';
+  const provider = arg('provider') ?? 'custom';
+  const endpoint = arg('endpoint') ?? 'http://localhost:8080';
   const theme = arg('theme');
+
+  void ensureLocalModelServer({
+    provider,
+    endpoint,
+    // out/web/standalone.js → repo root → scripts/
+    scriptPath: path.resolve(__dirname, '..', '..', 'scripts', 'serve-model.py'),
+    log: (message) => console.log(`${MUTED}${message}${RESET}`),
+  });
+
   const server = new LuigiWebServer({
     host: flag('lan') ? '0.0.0.0' : '127.0.0.1',
     port: Number(arg('port') ?? 8091),
-    modelEndpoint: arg('endpoint') ?? 'http://localhost:11434',
+    modelEndpoint: endpoint,
     wire: (provider === 'ollama' ? 'ollama' : 'openai') as WireFormat,
     model: arg('model'),
     theme: theme === 'premium-dark' || theme === 'premium-black' ? (theme as LuigiTheme) : undefined,

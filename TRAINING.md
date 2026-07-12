@@ -63,10 +63,14 @@ mlx_lm.fuse --model mlx-community/Qwen2.5-Coder-7B-Instruct-4bit \
 
 ## 5. Serve it and point Luigi at it
 
-The server speaks the OpenAI wire format, which Luigi's `custom` provider
-understands natively — no Ollama required. Use the repo's wrapper (it fixes an
-mlx-lm 0.31.x bug where the server silently drops `--adapter-path` on every
-request; see the header of `scripts/serve-model.py`):
+This is the default, out of the box: `luigi.model.provider` = `custom` and
+`luigi.model.endpoint` = `http://localhost:8080` ship as the extension's
+defaults (`package.json`), and both the VS Code extension and the standalone
+web app **auto-start this server on launch** if nothing answers at that
+endpoint (`src/inference/modelServer.ts`) — no manual step needed on a machine
+that already has the venv + adapter (see Environment section below). Manual
+invocation, if you want it running before the extension starts, or with a
+different adapter:
 
 ```bash
 ~/.luigi-mlx/bin/python scripts/serve-model.py \
@@ -74,20 +78,31 @@ request; see the header of `scripts/serve-model.py`):
   --adapter-path ~/luigi-finetune/luigi-adapter --port 8080
 ```
 
+The server speaks the OpenAI wire format, which Luigi's `custom` provider
+understands natively — no Ollama required. `scripts/serve-model.py` is a thin
+wrapper that forces the configured `--adapter-path` onto every request; mlx-lm's
+own internal adapter-map keying has drifted across releases (last caught
+2026-07-12) and silently drops the adapter, serving base-model answers with no
+error. If Luigi ever starts answering like the base model again (e.g. wrong
+brand color, generic answers), that map drifting again is the first suspect —
+verify with a question the base model gets wrong (`eval/benchmark.jsonl` has
+several) before assuming the training itself regressed.
+
 Caveat discovered on this machine: `mlx_lm.fuse` on an already-4-bit base
 produced a model WITHOUT the adapter behavior (silent no-op). Serve base +
 adapter via the wrapper instead of fusing, or fuse from the fp16 base.
 
-Then in VS Code settings:
-
-| Setting | Value |
-|---|---|
-| `luigi.model.provider` | `custom` |
-| `luigi.model.endpoint` | `http://localhost:8080` |
-| `luigi.model.primaryModel` | `mlx-community/Qwen2.5-Coder-7B-Instruct-4bit` |
-
 Alternatively convert the fused model to GGUF and `ollama create luigi-coder -f
-Modelfile` if you prefer serving through Ollama.
+Modelfile` if you prefer serving through Ollama (`luigi.model.provider` =
+`ollama`, `luigi.model.endpoint` = `http://localhost:11434` — the extension
+still supports this as a bring-your-own-model path).
+
+**Product direction:** Luigi's own fine-tuned model is the intended brain for
+every Luigi Solutions surface, not just this extension — the web app and,
+later, the mobile/desktop apps all point at the same local server. LuigiOS
+(a separate repo/project) is planned to eventually use Luigi Codes' trained
+model as its underlying engine; that integration happens in the LuigiOS repo,
+not here.
 
 ## Measuring quality (eval harness)
 

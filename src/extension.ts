@@ -2,13 +2,17 @@
  * Luigi Codes — extension entry point.
  *
  * Premium local AI coding agent by Luigi Solutions. Everything runs against a
- * local inference server (Ollama / LM Studio) — no cloud dependency, no data
- * leaves the machine unless the user wires a connector themselves.
+ * local inference server — Luigi Codes' own fine-tuned model by default
+ * (auto-started, see inference/modelServer.ts), Ollama / LM Studio as an
+ * alternative — no cloud dependency, no data leaves the machine unless the
+ * user wires a connector themselves.
  *
- * Boot order: logging → model router → tools → codebase index (background) →
- * memory → self-improvement → agent → UI surfaces (chat panel, sidebar,
- * status bar, terminal chat, web app server, GitHub connector) → 11 commands.
+ * Boot order: logging → auto-start local model server → model router → tools
+ * → codebase index (background) → memory → self-improvement → agent → UI
+ * surfaces (chat panel, sidebar, status bar, terminal chat, web app server,
+ * GitHub connector) → 11 commands.
  */
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LuigiAgent } from './agent/agentLoop';
 import { ToolRegistry, createDefaultTools } from './agent/tools/toolRegistry';
@@ -18,6 +22,7 @@ import { GitHubClient } from './github/githubClient';
 import { createGitHubTools } from './github/githubTools';
 import { SelfImprovement } from './improvement/selfImprove';
 import { ModelRouter } from './inference/modelRouter';
+import { ensureLocalModelServer } from './inference/modelServer';
 import { MemorySystem } from './memory/memorySystem';
 import { LuigiWebServer } from './web/webServer';
 import { LuigiBrand, ansiFromHex } from './ui/designTokens';
@@ -33,6 +38,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     channel.appendLine(`🍄 [${new Date().toISOString()}] ${message}`);
   };
   log('Luigi Codes activating. Premium local AI by Luigi Solutions.');
+
+  // Fire-and-forget: start Luigi's own trained model server if it's configured
+  // as the provider and nothing is answering on that endpoint yet. No-ops
+  // safely on machines without the mlx venv/adapter set up.
+  const modelConfig = vscode.workspace.getConfiguration('luigi');
+  void ensureLocalModelServer({
+    provider: modelConfig.get<string>('model.provider', 'custom'),
+    endpoint: modelConfig.get<string>('model.endpoint', 'http://localhost:8080'),
+    scriptPath: path.join(context.extensionPath, 'scripts', 'serve-model.py'),
+    log,
+  });
 
   // ── Core systems ─────────────────────────────────────────────────────────
   const router = new ModelRouter(log);
@@ -310,12 +326,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const provider = config.get<string>('model.provider', 'ollama');
+      const provider = config.get<string>('model.provider', 'custom');
       const allowLan = config.get<boolean>('web.allowLan', false);
       const server = new LuigiWebServer({
         host: allowLan ? '0.0.0.0' : '127.0.0.1',
         port: config.get<number>('web.port', 8091),
-        modelEndpoint: config.get<string>('model.endpoint', 'http://localhost:11434'),
+        modelEndpoint: config.get<string>('model.endpoint', 'http://localhost:8080'),
         wire: provider === 'ollama' ? 'ollama' : 'openai',
         model: config.get<string>('model.primaryModel', ''),
         theme: config.get<'premium-black' | 'premium-dark'>('ui.theme', 'premium-black'),

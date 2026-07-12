@@ -136,27 +136,27 @@
         "luigi.model.provider": {
           "type": "string",
           "enum": [
+            "custom",
             "ollama",
-            "lmstudio",
-            "custom"
+            "lmstudio"
           ],
-          "default": "ollama",
-          "description": "Local inference provider. Ollama and LM Studio expose compatible HTTP APIs on localhost."
+          "default": "custom",
+          "description": "Local inference provider. \"custom\" (default) is Luigi Codes' own fine-tuned model, auto-started locally on activation. Ollama and LM Studio expose compatible HTTP APIs on localhost if you'd rather bring your own model."
         },
         "luigi.model.endpoint": {
           "type": "string",
-          "default": "http://localhost:11434",
-          "description": "Base URL of the local inference server."
+          "default": "http://localhost:8080",
+          "description": "Base URL of the local inference server. Defaults to Luigi's own fine-tuned model server, which the extension auto-starts when this endpoint is unreachable."
         },
         "luigi.model.primaryModel": {
           "type": "string",
-          "default": "deepseek-coder:6.7b",
-          "description": "Preferred model for coding tasks."
+          "default": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+          "description": "Preferred model for coding tasks. Defaults to the base model Luigi's own LoRA fine-tune is served on top of."
         },
         "luigi.model.fallbackModel": {
           "type": "string",
-          "default": "codellama:13b",
-          "description": "Model used when the primary is unavailable."
+          "default": "qwen2.5-coder:7b",
+          "description": "Model used when the primary is unavailable (e.g. falling back to Ollama with a comparable public model)."
         },
         "luigi.model.embeddingModel": {
           "type": "string",
