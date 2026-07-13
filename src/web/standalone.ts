@@ -18,7 +18,9 @@
  * Like the extension, this auto-starts Luigi's own trained model server when
  * the configured endpoint is unreachable (see ../inference/modelServer.ts).
  */
+import type { ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
+import { DEFAULT_MODEL_ENDPOINT, DEFAULT_PROVIDER } from '../inference/modelDefaults';
 import { ensureLocalModelServer } from '../inference/modelServer';
 import { LuigiBrand, LuigiTheme, ansiFromHex } from '../ui/designTokens';
 import { LuigiWebServer, WireFormat } from './webServer';
@@ -38,16 +40,19 @@ function flag(name: string): boolean {
 }
 
 async function main(): Promise<void> {
-  const provider = arg('provider') ?? 'custom';
-  const endpoint = arg('endpoint') ?? 'http://localhost:8080';
+  const provider = arg('provider') ?? DEFAULT_PROVIDER;
+  const endpoint = arg('endpoint') ?? DEFAULT_MODEL_ENDPOINT;
   const theme = arg('theme');
 
+  let modelServer: ChildProcess | undefined;
   void ensureLocalModelServer({
     provider,
     endpoint,
     // out/web/standalone.js → repo root → scripts/
     scriptPath: path.resolve(__dirname, '..', '..', 'scripts', 'serve-model.py'),
     log: (message) => console.log(`${MUTED}${message}${RESET}`),
+  }).then((child) => {
+    modelServer = child;
   });
 
   const server = new LuigiWebServer({
@@ -80,6 +85,9 @@ async function main(): Promise<void> {
   console.log(`${MUTED}The link carries this session's access token. Ctrl+C to stop.${RESET}`);
 
   const shutdown = (): void => {
+    // If we auto-started the model server, take it down with us rather than
+    // leaking a multi-GB process after Ctrl+C.
+    modelServer?.kill();
     void server.stop().then(() => process.exit(0));
   };
   process.on('SIGINT', shutdown);

@@ -32,13 +32,16 @@ Luigi Codes is a VS Code extension that puts a full coding agent — chat, edito
 ## Requirements
 
 1. **VS Code** 1.85+
-2. **A local inference server** — [Ollama](https://ollama.com) (default) or LM Studio
-3. At least one model pulled:
+2. **A local inference server.** By default Luigi runs its own fine-tuned model
+   (provider `custom`, `http://localhost:8080`), auto-started on launch once the
+   local model is set up (see [TRAINING.md](TRAINING.md)). If you'd rather bring
+   your own model, point Luigi at [Ollama](https://ollama.com) or LM Studio by
+   changing `luigi.model.provider` / `luigi.model.endpoint` in settings.
+3. Bringing your own model via Ollama? Pull at least one:
 
 ```bash
-# recommended starting set
+# recommended starting set for the Ollama path
 ollama pull qwen2.5-coder:7b       # strong small coder
-ollama pull deepseek-coder:6.7b    # fast code generation
 ollama pull nomic-embed-text       # embeddings for index + memory
 ```
 
@@ -108,10 +111,10 @@ Open the Luigi icon in the activity bar, or run **`Luigi: Open Chat`** from the 
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `luigi.model.provider` | `ollama` | `ollama`, `lmstudio`, or `custom` (OpenAI-compatible) |
-| `luigi.model.endpoint` | `http://localhost:11434` | Inference server URL |
-| `luigi.model.primaryModel` | `deepseek-coder:6.7b` | Preferred coding model |
-| `luigi.model.fallbackModel` | `codellama:13b` | Used when primary is missing |
+| `luigi.model.provider` | `custom` | `custom` (Luigi's own model, auto-started), `ollama`, or `lmstudio` |
+| `luigi.model.endpoint` | `http://localhost:8080` | Inference server URL (Luigi's model server by default) |
+| `luigi.model.primaryModel` | `mlx-community/Qwen2.5-Coder-7B-Instruct-4bit` | Base model Luigi's LoRA is served on |
+| `luigi.model.fallbackModel` | `qwen2.5-coder:7b` | Used when primary is missing (e.g. via Ollama) |
 | `luigi.model.embeddingModel` | `nomic-embed-text` | Embeddings for index + memory |
 | `luigi.agent.autoApprove` | `false` | Skip the modal for read-only plans only; mutating plans always ask |
 | `luigi.agent.maxRetries` | `3` | Self-correction attempts per failed step |

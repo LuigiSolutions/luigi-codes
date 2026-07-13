@@ -22,14 +22,17 @@ import { GitHubClient } from './github/githubClient';
 import { createGitHubTools } from './github/githubTools';
 import { SelfImprovement } from './improvement/selfImprove';
 import { ModelRouter } from './inference/modelRouter';
+import { DEFAULT_MODEL_ENDPOINT, DEFAULT_PROVIDER } from './inference/modelDefaults';
 import { ensureLocalModelServer } from './inference/modelServer';
 import { MemorySystem } from './memory/memorySystem';
 import { LuigiWebServer } from './web/webServer';
 import { LuigiBrand, ansiFromHex } from './ui/designTokens';
+import type { ChildProcess } from 'node:child_process';
 
 let services: LuigiServices | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 let webServer: LuigiWebServer | undefined;
+let modelServerProcess: ChildProcess | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const channel = vscode.window.createOutputChannel('Luigi Codes');
@@ -41,14 +44,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Fire-and-forget: start Luigi's own trained model server if it's configured
   // as the provider and nothing is answering on that endpoint yet. No-ops
-  // safely on machines without the mlx venv/adapter set up.
-  const modelConfig = vscode.workspace.getConfiguration('luigi');
-  void ensureLocalModelServer({
-    provider: modelConfig.get<string>('model.provider', 'custom'),
-    endpoint: modelConfig.get<string>('model.endpoint', 'http://localhost:8080'),
-    scriptPath: path.join(context.extensionPath, 'scripts', 'serve-model.py'),
-    log,
-  });
+  // safely on machines without the mlx venv/adapter set up. Skipped under the
+  // test host: the suite is contractually required to pass with no model
+  // server running, and must not spawn a multi-GB process as a side effect.
+  if (context.extensionMode !== vscode.ExtensionMode.Test) {
+    const modelConfig = vscode.workspace.getConfiguration('luigi');
+    void ensureLocalModelServer({
+      provider: modelConfig.get<string>('model.provider', DEFAULT_PROVIDER),
+      endpoint: modelConfig.get<string>('model.endpoint', DEFAULT_MODEL_ENDPOINT),
+      scriptPath: path.join(context.extensionPath, 'scripts', 'serve-model.py'),
+      log,
+    }).then((child) => {
+      modelServerProcess = child;
+    });
+  }
 
   // ── Core systems ─────────────────────────────────────────────────────────
   const router = new ModelRouter(log);
@@ -417,6 +426,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     dispose: () => {
       void webServer?.stop();
       webServer = undefined;
+    },
+  });
+
+  // If WE auto-started the model server, WE own its lifecycle: don't leak a
+  // multi-GB process past the extension. (A server the user started manually
+  // is not ours to kill — ensureLocalModelServer only returns a handle for one
+  // it actually spawned.)
+  context.subscriptions.push({
+    dispose: () => {
+      modelServerProcess?.kill();
+      modelServerProcess = undefined;
     },
   });
 

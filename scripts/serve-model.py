@@ -13,8 +13,11 @@ Usage (mirrors mlx_lm.server):
     --model mlx-community/Qwen2.5-Coder-7B-Instruct-4bit \
     --adapter-path ~/luigi-finetune/luigi-adapter --port 8080
 
-Remove this wrapper once upstream fixes the lookup order.
+This wrapper defends against the map keying drifting again across mlx-lm
+releases, so keep it in place; if you ever retire it, first confirm the adapter
+survives a base-vs-tuned A/B (see TRAINING.md) on the exact mlx-lm version.
 """
+import argparse
 import sys
 
 from mlx_lm.server import ModelProvider, main
@@ -23,11 +26,13 @@ _original_load = ModelProvider.load
 
 
 def _configured_adapter_path():
-    argv = sys.argv
-    for i, token in enumerate(argv):
-        if token == '--adapter-path' and i + 1 < len(argv):
-            return argv[i + 1]
-    return None
+    # Reuse argparse so BOTH forms are honored: "--adapter-path X" and
+    # "--adapter-path=X". A hand scan for the space-separated token alone would
+    # silently miss the equals form and reintroduce the base-model bug.
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--adapter-path')
+    known, _ = parser.parse_known_args()
+    return known.adapter_path
 
 
 _ADAPTER_PATH = _configured_adapter_path()

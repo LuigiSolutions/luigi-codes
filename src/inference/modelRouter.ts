@@ -14,10 +14,12 @@ import { ndjsonLines, parseSseChunk, splitAtStopMarker } from './streamText';
 // Re-exported so existing consumers (tests, chat surfaces) keep one import site.
 export { parseSseChunk } from './streamText';
 
+import { DEFAULT_MODEL_ENDPOINT, DEFAULT_PROVIDER, LUIGI_TRAINED_MODEL_ID } from './modelDefaults';
+
 type Logger = (message: string) => void;
 
-/** Base model Luigi Codes' own LoRA fine-tune is served on top of via scripts/serve-model.py. */
-export const LUIGI_TRAINED_MODEL_ID = 'mlx-community/Qwen2.5-Coder-7B-Instruct-4bit';
+// Re-exported so existing consumers keep one import site.
+export { LUIGI_TRAINED_MODEL_ID } from './modelDefaults';
 
 export type TaskKind =
   | 'code-generation'
@@ -530,8 +532,8 @@ export class ModelRouter implements vscode.Disposable {
   } {
     const config = vscode.workspace.getConfiguration('luigi');
     return {
-      provider: config.get<string>('model.provider', 'custom'),
-      endpoint: config.get<string>('model.endpoint', 'http://localhost:8080').replace(/\/$/, ''),
+      provider: config.get<string>('model.provider', DEFAULT_PROVIDER),
+      endpoint: config.get<string>('model.endpoint', DEFAULT_MODEL_ENDPOINT).replace(/\/$/, ''),
       primaryModel: config.get<string>('model.primaryModel', LUIGI_TRAINED_MODEL_ID),
       fallbackModel: config.get<string>('model.fallbackModel', 'qwen2.5-coder:7b'),
       embeddingModel: config.get<string>('model.embeddingModel', 'nomic-embed-text'),
