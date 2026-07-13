@@ -14,7 +14,12 @@ import { ndjsonLines, parseSseChunk, splitAtStopMarker } from './streamText';
 // Re-exported so existing consumers (tests, chat surfaces) keep one import site.
 export { parseSseChunk } from './streamText';
 
-import { DEFAULT_MODEL_ENDPOINT, DEFAULT_PROVIDER, LUIGI_TRAINED_MODEL_ID } from './modelDefaults';
+import {
+  DEFAULT_MODEL_ENDPOINT,
+  DEFAULT_PROVIDER,
+  KNOWN_LOCAL_BACKENDS,
+  LUIGI_TRAINED_MODEL_ID,
+} from './modelDefaults';
 
 type Logger = (message: string) => void;
 
@@ -98,6 +103,8 @@ export class ModelRouter implements vscode.Disposable {
   private readonly registry = new Map<string, ModelProfile>();
   private readonly metrics = new Map<string, GenerationMetrics[]>();
   private lastDetection = 0;
+  /** Live backend chosen by detection when the configured endpoint had no models. */
+  private activeBackend?: { endpoint: string; provider: string };
 
   constructor(private readonly log: Logger) {
     // Curated defaults — profiles for the models Luigi recommends. Detection
@@ -196,38 +203,80 @@ export class ModelRouter implements vscode.Disposable {
 
   // ── Detection ──────────────────────────────────────────────────────────────
 
-  /** Probe the local server for installed models; registers unknown ones. */
-  async detectAvailableModels(): Promise<ModelProfile[]> {
-    const { provider, endpoint } = this.config();
-    let installed: string[] = [];
+  /**
+   * Probe one backend for its installed model ids. Returns the list (possibly
+   * empty) when the server answers, or undefined when it is unreachable.
+   */
+  private async probeBackend(endpoint: string, provider: string): Promise<string[] | undefined> {
     try {
       if (provider === 'ollama') {
-        const response = await fetch(`${endpoint}/api/tags`, {
-          signal: AbortSignal.timeout(3000),
-        });
+        const response = await fetch(`${endpoint}/api/tags`, { signal: AbortSignal.timeout(3000) });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
         const data = (await response.json()) as { models?: { name: string }[] };
-        installed = (data.models ?? []).map((m) => m.name);
-      } else {
-        // LM Studio and "custom" speak the OpenAI wire format.
-        const response = await fetch(`${endpoint}/v1/models`, {
-          signal: AbortSignal.timeout(3000),
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = (await response.json()) as { data?: { id: string }[] };
-        installed = (data.data ?? []).map((m) => m.id);
+        return (data.models ?? []).map((m) => m.name);
       }
-    } catch (error) {
-      this.log(`Model detection: ${endpoint} unreachable (${describe(error)}).`);
+      // LM Studio and "custom" speak the OpenAI wire format.
+      const response = await fetch(`${endpoint}/v1/models`, { signal: AbortSignal.timeout(3000) });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = (await response.json()) as { data?: { id: string }[] };
+      return (data.data ?? []).map((m) => m.id);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Probe the local server for installed models; registers unknown ones.
+   *
+   * Tries the user's configured endpoint FIRST (an explicit choice always
+   * wins), then falls back to any other well-known local server that has
+   * models. So a user whose Luigi model server isn't set up yet, but who has
+   * Ollama running, still gets a working assistant instead of a dead "no
+   * models" state — and the resolved backend sticks (effectiveConfig) so chat
+   * and embeddings route there too.
+   */
+  async detectAvailableModels(): Promise<ModelProfile[]> {
+    const configured = this.config();
+    const candidates = [
+      { endpoint: configured.endpoint, provider: configured.provider },
+      ...KNOWN_LOCAL_BACKENDS.filter((b) => b.endpoint !== configured.endpoint),
+    ];
+
+    let chosen: { endpoint: string; provider: string } | undefined;
+    let installed: string[] = [];
+    for (const candidate of candidates) {
+      const found = await this.probeBackend(candidate.endpoint, candidate.provider);
+      if (found && found.length > 0) {
+        chosen = candidate;
+        installed = found;
+        break;
+      }
+    }
+
+    if (!chosen) {
+      this.log('Model detection: no local model server with models reachable.');
       for (const model of this.registry.values()) {
         model.available = false;
       }
+      this.activeBackend = undefined;
       this.lastDetection = Date.now();
       return [];
+    }
+
+    // Only record an override when we had to leave the configured endpoint.
+    this.activeBackend =
+      chosen.endpoint === configured.endpoint && chosen.provider === configured.provider
+        ? undefined
+        : chosen;
+    if (this.activeBackend) {
+      this.log(
+        `Model detection: configured ${configured.endpoint} has no models; ` +
+          `using ${chosen.provider} at ${chosen.endpoint}.`,
+      );
     }
 
     const installedSet = new Set(installed);
@@ -376,7 +425,7 @@ export class ModelRouter implements vscode.Disposable {
     const sizeHint = messages.reduce((sum, m) => sum + m.content.length, 0);
     const routed = this.route({ kind, sizeHint });
     options.onRouted?.(routed.model);
-    const { provider, endpoint } = this.config();
+    const { provider, endpoint } = this.effectiveConfig();
     const started = Date.now();
     let text = '';
     let tokens = 0;
@@ -482,7 +531,7 @@ export class ModelRouter implements vscode.Disposable {
 
   /** Embedding vector, or undefined when no embedding path is available. */
   async embed(text: string): Promise<number[] | undefined> {
-    const { provider, endpoint, embeddingModel } = this.config();
+    const { provider, endpoint, embeddingModel } = this.effectiveConfig();
     try {
       if (provider === 'ollama') {
         const response = await fetch(`${endpoint}/api/embeddings`, {
@@ -538,6 +587,24 @@ export class ModelRouter implements vscode.Disposable {
       fallbackModel: config.get<string>('model.fallbackModel', 'qwen2.5-coder:7b'),
       embeddingModel: config.get<string>('model.embeddingModel', 'nomic-embed-text'),
     };
+  }
+
+  /**
+   * Config with the detection-resolved backend applied. When the configured
+   * endpoint had no models and detection fell back to another live server,
+   * chat() and embed() must talk to THAT server, not the dead configured one.
+   */
+  private effectiveConfig(): ReturnType<ModelRouter['config']> {
+    const base = this.config();
+    if (!this.activeBackend) {
+      return base;
+    }
+    return { ...base, provider: this.activeBackend.provider, endpoint: this.activeBackend.endpoint };
+  }
+
+  /** The endpoint chat/embeds currently route to (after any detection fallback). */
+  get activeEndpoint(): string {
+    return this.effectiveConfig().endpoint;
   }
 }
 

@@ -24,6 +24,7 @@ import { SelfImprovement } from './improvement/selfImprove';
 import { ModelRouter } from './inference/modelRouter';
 import { DEFAULT_MODEL_ENDPOINT, DEFAULT_PROVIDER } from './inference/modelDefaults';
 import { ensureLocalModelServer } from './inference/modelServer';
+import { maybeOfferModelSetup, setUpLocalModel } from './inference/modelSetup';
 import { MemorySystem } from './memory/memorySystem';
 import { LuigiWebServer } from './web/webServer';
 import { LuigiBrand, ansiFromHex } from './ui/designTokens';
@@ -136,8 +137,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       log(
         models.length > 0
           ? `Detected ${models.length} local model(s): ${models.map((m) => m.id).join(', ')}`
-          : 'No local models detected. Is Ollama running? (https://ollama.com)'
+          : 'No local models detected. Offering one-click setup.'
       );
+      // First run with nothing to talk to: offer setup ONCE (not every launch)
+      // rather than letting the first chat fail with a raw fetch error. Skipped
+      // in the test host.
+      if (models.length === 0 && context.extensionMode !== vscode.ExtensionMode.Test) {
+        const OFFERED_KEY = 'luigi.modelSetupOffered';
+        if (!context.globalState.get<boolean>(OFFERED_KEY)) {
+          void context.globalState.update(OFFERED_KEY, true);
+          void maybeOfferModelSetup(router, log);
+        }
+      }
     } catch (error) {
       log(`Model detection failed: ${describe(error)}`);
     }
@@ -404,7 +415,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (choice === 'Reveal Folder') {
         await vscode.commands.executeCommand('revealFileInOS', trainUri);
       }
-    })
+    }),
+    vscode.commands.registerCommand('luigi.setupModel', () => setUpLocalModel(router, log))
   );
 
   // Deep link from the website: vscode://LuigiSolutions.luigi-codes/open-web-app
@@ -440,7 +452,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   });
 
-  log('Luigi Codes ready. 11 commands registered.');
+  log('Luigi Codes ready. 12 commands registered.');
 }
 
 export function deactivate(): void {

@@ -40,6 +40,7 @@ const ALL_COMMANDS = [
   'luigi.connectGitHub',
   'luigi.showAgentStatus',
   'luigi.exportTrainingData',
+  'luigi.setupModel',
 ];
 
 /** Tool name → requiresApproval, exactly as the registry must declare them. */
@@ -129,7 +130,7 @@ suite('Luigi Codes', () => {
     assert.ok(extension?.isActive, 'Extension is not active after activate().');
   });
 
-  test('T2: all 11 luigi.* commands are registered', async () => {
+  test('T2: all 12 luigi.* commands are registered', async () => {
     const commands = await vscode.commands.getCommands(true);
     // VS Code auto-generates luigi.sidebar.* view-management commands from the
     // contributed webview view; only the extension's own commands count here.

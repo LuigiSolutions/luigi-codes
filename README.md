@@ -106,6 +106,7 @@ Open the Luigi icon in the activity bar, or run **`Luigi: Open Chat`** from the 
 | `Luigi: Connect GitHub` | Sign in with GitHub so Luigi can review repos and push approved updates |
 | `Luigi: Show Agent Status` | Models, index, memory, improvement, tools |
 | `Luigi: Export Training Data` | Dump collected data as fine-tune JSONL (train/valid) — see [TRAINING.md](TRAINING.md) |
+| `Luigi: Set Up Local Model` | One-click: get a working local model running (via Ollama on Mac/Windows/Linux) |
 
 ## Configuration
 

@@ -104,6 +104,10 @@
       {
         "command": "luigi.exportTrainingData",
         "title": "Luigi: Export Training Data (fine-tune JSONL)"
+      },
+      {
+        "command": "luigi.setupModel",
+        "title": "Luigi: Set Up Local Model"
       }
     ],
     "menus": {
