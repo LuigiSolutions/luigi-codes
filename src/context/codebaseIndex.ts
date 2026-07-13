@@ -215,11 +215,14 @@ export class CodebaseIndex implements vscode.Disposable {
     }
 
     const queryVector = await this.router.embed(query);
-    if (queryVector) {
-      // Fill missing embeddings for just the shortlist — lazy and cheap.
+    if (queryVector && queryVector.length > 0) {
+      // Fill missing embeddings for just the shortlist — lazy and cheap. Treat
+      // an empty vector like a missing one: embed() can return [] on a bad
+      // response, and a cached [] is truthy, so it would pin the file to a
+      // permanent cosine of 0 and never re-embed once the model recovers.
       await Promise.all(
         shortlist.map(async ({ entry }) => {
-          if (!entry.embedding) {
+          if (!entry.embedding || entry.embedding.length === 0) {
             entry.embedding = await this.router.embed(
               `${entry.path}\n${entry.symbols.map((s) => s.name).join(' ')}\n${entry.preview}`
             );
@@ -230,7 +233,8 @@ export class CodebaseIndex implements vscode.Disposable {
         // Blend ALL items on one scale. A file whose embedding failed to
         // compute keeps only its (scaled) lexical score — it must not retain a
         // raw, larger-scale score and thereby outrank a true semantic match.
-        const sim = item.entry.embedding ? cosine(queryVector, item.entry.embedding) : undefined;
+        const emb = item.entry.embedding;
+        const sim = emb && emb.length > 0 ? cosine(queryVector, emb) : undefined;
         item.score = blendScore(item.score, sim);
       }
       shortlist.sort((a, b) => b.score - a.score);

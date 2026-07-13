@@ -85,6 +85,19 @@ interface ProducedFile {
 }
 
 /** Failure category → the standing rule that counters it. */
+/** Keep the first occurrence of each rule (persisted rules win over re-derived ones). */
+function dedupeAdjustments(adjustments: PromptAdjustment[]): PromptAdjustment[] {
+  const seen = new Set<string>();
+  const out: PromptAdjustment[] = [];
+  for (const a of adjustments) {
+    if (!seen.has(a.rule)) {
+      seen.add(a.rule);
+      out.push(a);
+    }
+  }
+  return out;
+}
+
 const CATEGORY_RULES: Record<FailureCategory, PromptAdjustment['rule']> = {
   'plan-not-parseable':
     'Output ONLY the JSON array, no prose before or after it, no markdown fences.',
@@ -139,7 +152,12 @@ export class SelfImprovement {
           ...current.corrections,
         ],
         failureCounts: { ...(parsed.failureCounts ?? {}) },
-        adjustments: Array.isArray(parsed.adjustments) ? parsed.adjustments : [],
+        // Merge like the other fields: a rule learned before load finished must
+        // not be dropped. De-dupe by rule text, persisted first.
+        adjustments: dedupeAdjustments([
+          ...(Array.isArray(parsed.adjustments) ? parsed.adjustments : []),
+          ...current.adjustments,
+        ]),
       };
       for (const [category, count] of Object.entries(current.failureCounts) as [
         FailureCategory,
@@ -396,13 +414,26 @@ export class SelfImprovement {
     return path.join(this.storageUri.fsPath, 'improvement.json');
   }
 
+  private writeChain: Promise<void> = Promise.resolve();
+
   private async save(): Promise<void> {
+    // Serialize writes so two concurrent (often un-awaited) saves never
+    // interleave into the same file, and write atomically so a crash mid-write
+    // can't truncate improvement.json into unparseable JSON (which loadState
+    // would then silently discard, losing every learned rule and correction).
+    this.writeChain = this.writeChain.then(() => this.writeState());
+    return this.writeChain;
+  }
+
+  private async writeState(): Promise<void> {
     try {
       // Load-before-write: saving prior to initialization would overwrite the
       // persisted history with a near-empty state.
       await this.initialize();
       await fs.mkdir(this.storageUri.fsPath, { recursive: true });
-      await fs.writeFile(this.stateFile, JSON.stringify(this.state), 'utf8');
+      const tmp = `${this.stateFile}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(this.state), 'utf8');
+      await fs.rename(tmp, this.stateFile);
     } catch (error) {
       this.log(
         `Self-improvement: save failed: ${error instanceof Error ? error.message : String(error)}`

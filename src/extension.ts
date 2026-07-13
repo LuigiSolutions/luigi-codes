@@ -34,6 +34,7 @@ let services: LuigiServices | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 let webServer: LuigiWebServer | undefined;
 let modelServerProcess: ChildProcess | undefined;
+let modelServerDisposed = false;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const channel = vscode.window.createOutputChannel('Luigi Codes');
@@ -55,9 +56,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       endpoint: modelConfig.get<string>('model.endpoint', DEFAULT_MODEL_ENDPOINT),
       scriptPath: path.join(context.extensionPath, 'scripts', 'serve-model.py'),
       log,
-    }).then((child) => {
-      modelServerProcess = child;
-    });
+    })
+      .then((child) => {
+        // If the extension was already torn down while we were still spawning,
+        // kill the child now — the dispose handler ran before this resolved and
+        // would otherwise leak the process.
+        if (modelServerDisposed) {
+          child?.kill();
+        } else {
+          modelServerProcess = child;
+        }
+      })
+      .catch((error) => log(`Local model server auto-start failed: ${describe(error)}`));
   }
 
   // ── Core systems ─────────────────────────────────────────────────────────
@@ -152,23 +162,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     } catch (error) {
       log(`Model detection failed: ${describe(error)}`);
     }
-    try {
-      await memory.initialize();
-      log(`Memory online (${memory.status}).`);
-    } catch (error) {
-      log(`Memory init failed: ${describe(error)}`);
-    }
-    try {
-      await improve.initialize();
-    } catch (error) {
-      log(`Self-improvement init failed: ${describe(error)}`);
-    }
-    try {
-      const stats = await index.indexWorkspace();
-      log(`Workspace indexed: ${stats.fileCount} files, ${stats.symbolCount} symbols.`);
-    } catch (error) {
-      log(`Indexing failed: ${describe(error)}`);
-    }
+    // Memory, self-improvement, and workspace indexing are independent — none
+    // reads another's result — so run them concurrently instead of serially
+    // blocking each behind the last (indexing a large workspace can take
+    // seconds and was needlessly delaying memory/improvement readiness).
+    await Promise.allSettled([
+      (async () => {
+        try {
+          await memory.initialize();
+          log(`Memory online (${memory.status}).`);
+        } catch (error) {
+          log(`Memory init failed: ${describe(error)}`);
+        }
+      })(),
+      (async () => {
+        try {
+          await improve.initialize();
+        } catch (error) {
+          log(`Self-improvement init failed: ${describe(error)}`);
+        }
+      })(),
+      (async () => {
+        try {
+          const stats = await index.indexWorkspace();
+          log(`Workspace indexed: ${stats.fileCount} files, ${stats.symbolCount} symbols.`);
+        } catch (error) {
+          log(`Indexing failed: ${describe(error)}`);
+        }
+      })(),
+    ]);
   })();
 
   // ── Chat view (activity bar) ──────────────────────────────────────────────
@@ -447,6 +469,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // it actually spawned.)
   context.subscriptions.push({
     dispose: () => {
+      modelServerDisposed = true;
       modelServerProcess?.kill();
       modelServerProcess = undefined;
     },
@@ -461,6 +484,8 @@ export function deactivate(): void {
   services = undefined;
   statusBarItem = undefined;
   webServer = undefined;
+  modelServerProcess = undefined;
+  modelServerDisposed = false;
 }
 
 function describe(error: unknown): string {

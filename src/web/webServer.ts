@@ -140,6 +140,17 @@ export class LuigiWebServer {
     });
 
     this.server = server;
+    // The one-shot listeners above are gone after listen resolves; without a
+    // durable 'error' handler, a later server error (e.g. EMFILE on accept)
+    // would throw as an uncaught exception and kill the whole process.
+    server.on('error', (error) => this.log(`Web server error: ${describe(error)}`));
+    server.on('clientError', (_error, socket) => {
+      if (socket.writable) {
+        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+      } else {
+        socket.destroy();
+      }
+    });
     const address = server.address();
     this.boundPort = typeof address === 'object' && address ? address.port : port;
     this.startedUrls = this.computeUrls(host);
@@ -179,6 +190,10 @@ export class LuigiWebServer {
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
+        // In LAN mode the access token is in the page URL; without this, tapping
+        // any model-rendered external link would leak the full URL (token and
+        // all) to that site via the Referer header.
+        'Referrer-Policy': 'no-referrer',
       });
       res.end(this.chatPage());
       return;
@@ -221,6 +236,19 @@ export class LuigiWebServer {
       res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify(body));
     };
+    // Parse a POST body as a JSON object, or undefined on malformed/non-object
+    // input — so a bad client body becomes a 400, not a misleading 502 that
+    // blames GitHub/upstream.
+    const readJsonObject = async (): Promise<Record<string, unknown> | undefined> => {
+      try {
+        const parsed = JSON.parse(await readBody(req)) as unknown;
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    };
     try {
       if (req.method === 'GET' && url.pathname === '/api/github/repos') {
         const login = await client.viewer();
@@ -228,7 +256,11 @@ export class LuigiWebServer {
         return;
       }
       if (req.method === 'POST' && url.pathname === '/api/github/review') {
-        const body = JSON.parse(await readBody(req)) as { repo?: string };
+        const body = await readJsonObject();
+        if (!body) {
+          json(400, { error: 'invalid JSON body' });
+          return;
+        }
         const repo = String(body.repo ?? '');
         if (!validRepoName(repo)) {
           json(400, { error: 'repo must be owner/name' });
@@ -238,7 +270,11 @@ export class LuigiWebServer {
         return;
       }
       if (req.method === 'POST' && url.pathname === '/api/github/commit') {
-        const body = JSON.parse(await readBody(req)) as Record<string, string>;
+        const body = await readJsonObject();
+        if (!body) {
+          json(400, { error: 'invalid JSON body' });
+          return;
+        }
         const repo = String(body.repo ?? '');
         if (
           !validRepoName(repo) ||
@@ -252,12 +288,12 @@ export class LuigiWebServer {
         }
         const commitUrl = await client.commitFile(
           repo,
-          body.branch,
-          body.path,
-          body.content,
-          body.message
+          String(body.branch),
+          String(body.path),
+          String(body.content),
+          String(body.message)
         );
-        this.log(`GitHub: committed ${body.path} to ${repo}@${body.branch} (web).`);
+        this.log(`GitHub: committed ${String(body.path)} to ${repo}@${String(body.branch)} (web).`);
         json(200, { ok: true, url: commitUrl });
         return;
       }
@@ -323,6 +359,8 @@ export class LuigiWebServer {
       if (!abort.signal.aborted) {
         send({ error: describe(error) });
       }
+    } finally {
+      abort.abort(); // tear down the upstream request (no-op if it finished)
     }
     res.end();
   }
@@ -508,6 +546,11 @@ export class LuigiWebServer {
       if (!abort.signal.aborted) {
         send({ error: describe(error) });
       }
+    } finally {
+      // Tear down the upstream request. On the stop-marker early return the
+      // model would otherwise keep generating into an abandoned socket; a no-op
+      // when the stream already finished naturally.
+      abort.abort();
     }
     res.end();
   }
@@ -531,7 +574,12 @@ export class LuigiWebServer {
         throw new Error(`HTTP ${response.status}`);
       }
       for await (const line of ndjsonLines(response.body)) {
-        const chunk = JSON.parse(line) as { message?: { content?: string }; error?: string };
+        let chunk: { message?: { content?: string }; error?: string };
+        try {
+          chunk = JSON.parse(line);
+        } catch {
+          continue; // one malformed/keepalive frame must not sink a good stream
+        }
         if (chunk.error) {
           throw new Error(chunk.error);
         }

@@ -7,6 +7,7 @@
  * through a traversal guard so a plan can never reach outside the workspace.
  */
 import { exec } from 'child_process';
+import { existsSync, realpathSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -95,10 +96,23 @@ function resolveSafe(relativePath: string): string {
   if (resolved !== root && !resolved.startsWith(root + path.sep)) {
     throw new Error(`Path escapes the workspace: ${relativePath}`);
   }
+  // Lexical containment isn't enough: a path that stays inside the workspace on
+  // paper can still resolve THROUGH a symlink to a file outside it (e.g. a link
+  // named "notes" pointing at ~/.ssh). Resolve the real path of the nearest
+  // existing ancestor (the leaf may be a not-yet-created file) and re-check.
+  const realRoot = realpathSync(root);
+  let probe = resolved;
+  while (!existsSync(probe) && path.dirname(probe) !== probe) {
+    probe = path.dirname(probe);
+  }
+  const realProbe = realpathSync(probe);
+  if (realProbe !== realRoot && !realProbe.startsWith(realRoot + path.sep)) {
+    throw new Error(`Path escapes the workspace: ${relativePath}`);
+  }
   return resolved;
 }
 
-function cap(text: string, limit = 20000): string {
+export function cap(text: string, limit = 20000): string {
   return text.length > limit
     ? `${text.slice(0, limit)}\n… (${text.length - limit} chars truncated)`
     : text;
@@ -225,8 +239,13 @@ export function createDefaultTools(log: Logger): LuigiTool[] {
         }
         const uris = await vscode.workspace.findFiles(args.glob || SOURCE_GLOB, EXCLUDE_GLOB, 400);
         const matches: string[] = [];
-        for (const uri of uris) {
-          if (matches.length >= 120) {
+        // A model-supplied regex can backtrack catastrophically (e.g. "(a+)+$")
+        // and freeze the single-threaded extension host. Bound the work: skip
+        // pathologically long lines, and stop at a wall-clock deadline.
+        const MAX_LINE = 2000;
+        const deadline = Date.now() + 3000;
+        outer: for (const uri of uris) {
+          if (matches.length >= 120 || Date.now() > deadline) {
             break;
           }
           let content: string;
@@ -237,7 +256,10 @@ export function createDefaultTools(log: Logger): LuigiTool[] {
           }
           const lines = content.split('\n');
           for (let i = 0; i < lines.length && matches.length < 120; i++) {
-            if (regex.test(lines[i])) {
+            if (i % 500 === 0 && Date.now() > deadline) {
+              break outer;
+            }
+            if (lines[i].length <= MAX_LINE && regex.test(lines[i])) {
               matches.push(
                 `${vscode.workspace.asRelativePath(uri, false)}:${i + 1}: ${lines[i].trim().slice(0, 200)}`
               );
@@ -299,9 +321,13 @@ export function createDefaultTools(log: Logger): LuigiTool[] {
       requiresApproval: false,
       async run(args) {
         const severityNames = ['error', 'warning', 'info', 'hint'];
-        const all: [vscode.Uri, vscode.Diagnostic[]][] = args.path
-          ? [[vscode.Uri.file(resolveSafe(args.path)), vscode.languages.getDiagnostics(vscode.Uri.file(resolveSafe(args.path)))]]
-          : [...vscode.languages.getDiagnostics()];
+        let all: [vscode.Uri, vscode.Diagnostic[]][];
+        if (args.path) {
+          const uri = vscode.Uri.file(resolveSafe(args.path));
+          all = [[uri, vscode.languages.getDiagnostics(uri)]];
+        } else {
+          all = [...vscode.languages.getDiagnostics()];
+        }
         const lines: string[] = [];
         for (const [uri, diagnostics] of all) {
           for (const d of diagnostics) {

@@ -9,7 +9,13 @@
  * copy would reference symbols that don't exist in the webview.
  */
 
-/** Escape the five characters that could break out of text content. */
+/**
+ * Escape the three characters that matter in HTML *text* content (& < >).
+ * NOTE: quotes are NOT escaped, so when interpolating into an attribute value
+ * (e.g. an href) you must escape `"` yourself (renderInline does).
+ * INPUT CONTRACT: renderInline assumes its input is ALREADY escaped by this
+ * function; never call it on raw model text or you reintroduce XSS.
+ */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -17,22 +23,34 @@ export function escapeHtml(s: string): string {
 /**
  * Inline spans. Inline `code` is parsed FIRST and its content is emitted
  * verbatim; links and **bold** are applied only to text OUTSIDE code spans.
- * Applying them globally would corrupt code such as `x**2 + y**2` (bolding the
- * run between the `**`) or `[a](b)` shown literally in a code sample.
+ * Links are tokenized BEFORE bold so a `**` inside a link URL can never be
+ * turned into <strong> tags (which would corrupt the href) — the same reason
+ * code spans are protected from bolding `x**2 + y**2`.
  */
 export function renderInline(s: string): string {
   const codeSpan = /`([^`]+)`/g;
-  const format = (seg: string): string =>
-    seg
-      // [text](url) → anchor, but only for safe schemes; the URL's quotes are
-      // escaped so it cannot break out of the href attribute. A function
-      // replacer keeps `$` sequences in the URL literal.
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, text: string, url: string) =>
-        /^(https?:\/\/|mailto:)/i.test(url)
-          ? '<a href="' + url.replace(/"/g, '&quot;') + '">' + text + '</a>'
-          : whole
-      )
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const linkRe = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+  const bold = (seg: string): string => seg.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const format = (seg: string): string => {
+    // Tokenize links: emit each <a> with a verbatim (quote-escaped) href so the
+    // bold pass can only ever touch text, never the URL. rel="noreferrer" keeps
+    // a token-bearing page URL out of the Referer when a link is clicked.
+    let out = '';
+    let last = 0;
+    let m: RegExpExecArray | null;
+    linkRe.lastIndex = 0;
+    while ((m = linkRe.exec(seg)) !== null) {
+      out += bold(seg.slice(last, m.index));
+      const whole = m[0];
+      const text = m[1];
+      const url = m[2];
+      out += /^(https?:\/\/|mailto:)/i.test(url)
+        ? '<a href="' + url.replace(/"/g, '&quot;') + '" rel="noreferrer noopener">' + bold(text) + '</a>'
+        : bold(whole);
+      last = linkRe.lastIndex;
+    }
+    return out + bold(seg.slice(last));
+  };
   let out = '';
   let last = 0;
   let match: RegExpExecArray | null;

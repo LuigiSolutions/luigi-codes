@@ -122,14 +122,22 @@ export class MemorySystem {
 
   async storeTask(record: TaskRecord): Promise<void> {
     await this.initialize();
-    const embedding = await this.embed(this.textOf(record));
+    const text = this.textOf(record);
+    // A real model vector when the server is up; otherwise the hash fallback.
+    const modelVector = await this.router.embed(text);
+    const isRealVector = !!modelVector && modelVector.length > 0;
+    const embedding = isRealVector ? (modelVector as number[]) : hashEmbedding(text);
     this.entries.push({ record, embedding });
     if (this.entries.length > MAX_LOCAL_ENTRIES) {
       this.entries = this.entries.slice(-MAX_LOCAL_ENTRIES);
     }
     await this.saveLocal();
 
-    if (this.chromaCollectionId && this.chromaApiBase) {
+    // Only push REAL model vectors to Chroma. A collection pins its dimension to
+    // the first vector added, so mixing the 256-dim hash fallback with model
+    // vectors makes every later query fail on dimension mismatch. The local
+    // mirror keeps the record either way.
+    if (isRealVector && this.chromaCollectionId && this.chromaApiBase) {
       try {
         await fetch(`${this.chromaApiBase}/collections/${this.chromaCollectionId}/add`, {
           method: 'POST',
@@ -137,7 +145,7 @@ export class MemorySystem {
           body: JSON.stringify({
             ids: [record.id],
             embeddings: [embedding],
-            documents: [this.textOf(record)],
+            documents: [text],
             metadatas: [{ record: JSON.stringify(record) }],
           }),
           signal: AbortSignal.timeout(5000),
@@ -257,10 +265,23 @@ export class MemorySystem {
     }
   }
 
+  private writeChain: Promise<void> = Promise.resolve();
+
   private async saveLocal(): Promise<void> {
+    // Serialize + write atomically: memory.json can be multi-MB (records plus
+    // embedding vectors), and a crash mid-write or two overlapping writers would
+    // truncate it into unparseable JSON that loadLocal then silently discards,
+    // losing all task memory.
+    this.writeChain = this.writeChain.then(() => this.writeLocal());
+    return this.writeChain;
+  }
+
+  private async writeLocal(): Promise<void> {
     try {
       await fs.mkdir(this.storageUri.fsPath, { recursive: true });
-      await fs.writeFile(this.localFile, JSON.stringify(this.entries), 'utf8');
+      const tmp = `${this.localFile}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(this.entries), 'utf8');
+      await fs.rename(tmp, this.localFile);
     } catch (error) {
       this.log(`Memory: local save failed: ${describe(error)}`);
     }

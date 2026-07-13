@@ -435,6 +435,30 @@ suite('Luigi Codes', () => {
     assert.ok(!fs.existsSync(path.join(root, '..', 'escapee.txt')), 'Escaping write leaked a file.');
   });
 
+  test('T29: file tools refuse a path that escapes via a symlink', async function () {
+    const registry = new ToolRegistry(noop);
+    for (const tool of createDefaultTools(noop)) {
+      registry.register(tool);
+    }
+    const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
+    // A symlink INSIDE the workspace pointing OUTSIDE it: the path stays inside
+    // lexically but resolves through the link to a file the workspace can't reach.
+    const link = path.join(root, 'outlink');
+    try {
+      fs.symlinkSync(path.dirname(root), link, 'dir');
+    } catch {
+      this.skip(); // symlink creation not permitted here (e.g. Windows w/o rights)
+      return;
+    }
+    try {
+      const result = await registry.execute('readFile', { path: 'outlink/anything.txt' });
+      assert.strictEqual(result.ok, false, 'readFile through an escaping symlink must be refused.');
+      assert.match(result.error ?? '', /escape/i, `expected escape error, got: ${result.error}`);
+    } finally {
+      fs.unlinkSync(link);
+    }
+  });
+
   test('T16: markdown renderer — bold never leaks into inline code, and injection is wired', async () => {
     // The bug: bold applied globally corrupts code containing `**`.
     assert.strictEqual(
@@ -445,6 +469,14 @@ suite('Luigi Codes', () => {
     assert.strictEqual(renderInline('`**literal**`'), '<code class="inline">**literal**</code>');
     // Bold still works OUTSIDE code.
     assert.strictEqual(renderInline('use **bold** here'), 'use <strong>bold</strong> here');
+
+    // A link whose URL contains ** must NOT be corrupted into <strong> (the href
+    // stays intact), and external links carry rel="noreferrer" so a token-bearing
+    // page URL never leaks via the Referer header when clicked.
+    const link = renderInline('[docs](https://x.com/a**b**c)');
+    assert.ok(link.includes('href="https://x.com/a**b**c"'), `link href must stay intact: ${link}`);
+    assert.ok(link.includes('rel="noreferrer noopener"'), `external link must set rel: ${link}`);
+    assert.ok(!link.includes('<strong>'), `bold must not touch the URL: ${link}`);
 
     // Block-level: escaping, headings, ordered + unordered lists, fenced code.
     assert.strictEqual(escapeHtml('<a> & b'), '&lt;a&gt; &amp; b');
@@ -502,11 +534,17 @@ suite('Luigi Codes', () => {
   });
 
   test('T18: markdown links render for safe schemes only', () => {
-    // http/https/mailto become anchors.
-    assert.strictEqual(renderInline('see [docs](https://x.com/a)'), 'see <a href="https://x.com/a">docs</a>');
-    assert.ok(renderInline('[mail](mailto:a@b.com)').includes('<a href="mailto:a@b.com">mail</a>'));
+    // http/https/mailto become anchors (with rel=noreferrer to avoid Referer leaks).
+    assert.strictEqual(
+      renderInline('see [docs](https://x.com/a)'),
+      'see <a href="https://x.com/a" rel="noreferrer noopener">docs</a>'
+    );
+    assert.ok(renderInline('[mail](mailto:a@b.com)').includes('<a href="mailto:a@b.com" rel="noreferrer noopener">mail</a>'));
     // Bold composes inside a link.
-    assert.strictEqual(renderInline('[**b**](https://x.com)'), '<a href="https://x.com"><strong>b</strong></a>');
+    assert.strictEqual(
+      renderInline('[**b**](https://x.com)'),
+      '<a href="https://x.com" rel="noreferrer noopener"><strong>b</strong></a>'
+    );
     // Unsafe schemes are NOT linkified — left literal, no anchor emitted.
     assert.strictEqual(renderInline('[x](javascript:alert(1))'), '[x](javascript:alert(1))');
     assert.ok(!renderInline('[x](data:text/html,abc)').includes('<a '));

@@ -700,13 +700,12 @@ export class LuigiChatViewProvider implements vscode.WebviewViewProvider {
 
   // ── markdown helpers ──
   // Single source: src/chat/markdown.ts, injected as source so the panel
-  // renders with the exact code the test suite exercises (esc/inline aliased
-  // for the call sites below).
+  // renders with the exact code the test suite exercises (esc aliased for the
+  // call sites below). renderMarkdown calls renderInline by name internally.
   ${escapeHtml.toString()}
   ${renderInline.toString()}
   ${renderMarkdown.toString()}
   var esc = escapeHtml;
-  var inline = renderInline;
 
   // Welcome is detached (not destroyed) so New Chat can bring it back.
   function hideWelcome() {

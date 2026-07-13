@@ -7,18 +7,13 @@
  * when missing), never force-anything, so the user's history stays safe.
  */
 import type { LuigiTool, ToolResult } from '../agent/tools/toolRegistry';
+import { cap as capText } from '../agent/tools/toolRegistry';
 import { GitHubClient, validRepoName } from './githubClient';
 
 type Logger = (message: string) => void;
 
 function fail(error: string): ToolResult {
   return { ok: false, output: '', error };
-}
-
-function capText(text: string, limit = 20000): string {
-  return text.length > limit
-    ? `${text.slice(0, limit)}\n… (${text.length - limit} chars truncated)`
-    : text;
 }
 
 export function createGitHubTools(client: GitHubClient, log: Logger): LuigiTool[] {

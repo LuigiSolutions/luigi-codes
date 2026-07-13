@@ -319,7 +319,16 @@ export class LuigiAgent implements vscode.Disposable {
         const head = `${step.id}. ${step.description}${step.tool ? `  [${step.tool}]` : ''}`;
         if (step.tool && step.args && Object.keys(step.args).length > 0) {
           const argText = Object.entries(step.args)
-            .map(([key, value]) => `      ${key}: ${value.length > 300 ? `${value.slice(0, 300)}…` : value}`)
+            .map(([key, value]) => {
+              // Never hide what a shell step will actually run: a truncated tail
+              // could conceal a malicious command the human then approves unseen.
+              // For other args, if we trim, say so explicitly.
+              const shown =
+                key === 'command' || value.length <= 300
+                  ? value
+                  : `${value.slice(0, 300)}… (${value.length - 300} more chars hidden; review before approving)`;
+              return `      ${key}: ${shown}`;
+            })
             .join('\n');
           return `${head}\n${argText}`;
         }
@@ -493,12 +502,14 @@ export class LuigiAgent implements vscode.Disposable {
   private async verifyEndState(task: AgentTask, outcomes: StepOutcome[]): Promise<EndState> {
     const paths = this.writtenPaths(outcomes);
     if (paths.length === 0) return { verdict: 'unknown', reason: 'no files were written' };
-    const snapshots: string[] = [];
-    for (const p of paths.slice(0, 8)) {
-      const res = await this.tools.execute('readFile', { path: p });
+    // The reads are independent — run them concurrently, then keep path order.
+    const targets = paths.slice(0, 8);
+    const reads = await Promise.all(targets.map((p) => this.tools.execute('readFile', { path: p })));
+    const snapshots = targets.map((p, i) => {
+      const res = reads[i];
       const body = res.ok ? res.output : `(could not read: ${res.error ?? res.output})`;
-      snapshots.push(`----- ${p} -----\n${body.slice(0, 2000)}`);
-    }
+      return `----- ${p} -----\n${body.slice(0, 2000)}`;
+    });
     try {
       const raw = await this.callModel(
         `TASK:\n${task.prompt}\n\nCURRENT FILE CONTENTS ON DISK (the source of truth, not any earlier claim):\n${snapshots.join('\n\n')}\n\n` +
